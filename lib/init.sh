@@ -63,26 +63,75 @@ cmd_forget() {
 # nook update — pull the checkout this command runs from and re-link. Without
 # it, a fix means remembering where bootstrap put the clone, which is a thing
 # nobody should have to know.
+# The client half of what the box already does for its services: a machine
+# nobody thinks about is exactly the one that ends up months behind, and a stale
+# CLI here looks like broken features rather than an old version — menu rows
+# vanish, `nook services` is an unknown command.
+update_auto() { # <root> on|off
+  local root=$1 want=$2 unit_dir=$HOME/.config/systemd/user
+  command -v systemctl >/dev/null ||
+    die "no systemd here — schedule 'nook update --quiet' with whatever this machine uses"
+
+  if [[ $want == off ]]; then
+    systemctl --user disable --now nook-update.timer >/dev/null 2>&1 || true
+    echo "automatic updates are off — nook update still works by hand"
+    return 0
+  fi
+
+  mkdir -p "$unit_dir"
+  cp -f "$root/systemd/nook-update.service" "$root/systemd/nook-update.timer" "$unit_dir/"
+  systemctl --user daemon-reload 2>/dev/null || true
+  systemctl --user enable --now nook-update.timer >/dev/null ||
+    die "could not enable nook-update.timer — is the user manager running?"
+  echo "nook updates itself daily"
+  systemctl --user list-timers nook-update.timer --no-pager 2>/dev/null | sed -n 2p
+}
+
 cmd_update() {
-  local root=$1
+  local root=$1 quiet=0
+  shift
+
+  case ${1:-} in
+    --auto) update_auto "$root" on; return 0 ;;
+    --no-auto) update_auto "$root" off; return 0 ;;
+    --quiet) quiet=1 ;;
+    "") ;;
+    *) die "usage: nook update [--quiet | --auto | --no-auto]" ;;
+  esac
+
   [[ -d $root/.git ]] || die "$root is not a git checkout — re-run the bootstrap to update"
   need git
 
   local before after
   before=$(git -C "$root" rev-parse --short HEAD)
-  git -C "$root" pull --quiet --ff-only || die "could not fast-forward $root — is it modified?"
+  # --ff-only is the whole safety story: a checkout with local work, or one that
+  # has diverged, is refused rather than rewritten. Under the timer that refusal
+  # goes to the journal and `nook doctor` reports the machine as behind, which is
+  # better than a daily notification nobody can act on.
+  if ! git -C "$root" pull --quiet --ff-only 2>/dev/null; then
+    ((quiet)) && return 0
+    die "could not fast-forward $root — is it modified?"
+  fi
   after=$(git -C "$root" rev-parse --short HEAD)
 
   if [[ $before == "$after" ]]; then
-    echo "already up to date ($after)"
+    ((quiet)) || echo "already up to date ($after)"
+    return 0
+  fi
+
+  # install.sh is where the symlinks, the unit and the skill come from, and a
+  # new version may add to them.
+  NOOK_FROM_BOOTSTRAP=1 bash "$root/install.sh" >/dev/null
+
+  if ((quiet)); then
+    # One line, because this arrives unasked while somebody is doing something
+    # else. What changed is in `git log`, and doctor names the version.
+    notify "nook updated to $after — $(git -C "$root" rev-list --count "$before..$after") new commits" >/dev/null
     return 0
   fi
 
   echo "updated $before -> $after"
   git -C "$root" log --oneline "$before..$after" | sed 's/^/  /'
-  # install.sh is where the symlinks, the unit and the skill come from, and a
-  # new version may add to them.
-  NOOK_FROM_BOOTSTRAP=1 bash "$root/install.sh" >/dev/null
   echo
   echo "re-adopt to pick up anything that changed in how boxes are recorded:"
   echo "  nook adopt"

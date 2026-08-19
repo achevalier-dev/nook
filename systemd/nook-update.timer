@@ -1,0 +1,14 @@
+[Unit]
+Description=Keep the nook command current
+Documentation=https://github.com/achevalier-dev/nook
+
+[Timer]
+OnCalendar=daily
+# Two hours of it, so a tailnet full of machines does not hit GitHub at the same
+# second, and Persistent so a laptop that was shut at the appointed hour catches
+# up when it opens.
+RandomizedDelaySec=2h
+Persistent=true
+
+[Install]
+WantedBy=timers.target

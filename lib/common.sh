@@ -29,6 +29,18 @@ notify() {
 
 nook_dir() { echo "$NOOK_HOME/$1"; }
 
+# Whether this machine updates its own copy of nook on a timer. Here rather than
+# in lib/init.sh because `nook doctor` reports it and `nook update` sets it, and
+# those are two different files.
+update_timer_state() {
+  command -v systemctl >/dev/null || { echo "by hand"; return 0; }
+  if systemctl --user is-enabled nook-update.timer >/dev/null 2>&1; then
+    echo "daily"
+  else
+    echo "by hand"
+  fi
+}
+
 nooks() {
   [[ -d $NOOK_HOME ]] || return 0
   # Hidden directories belong to something else and are skipped — but by their

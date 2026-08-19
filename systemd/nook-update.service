@@ -1,0 +1,15 @@
+[Unit]
+# `nook update`, run by its timer. A user unit, like the mount: it updates a
+# checkout in the user's home and re-links things into ~/.local/bin, neither of
+# which is root's business.
+Description=Update the nook command
+Documentation=https://github.com/achevalier-dev/nook
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# --quiet says nothing when there is nothing to say, and sends one notification
+# when the command actually moved. A fast-forward is the only thing it will do:
+# a modified or diverged checkout is left exactly as it is.
+ExecStart=%h/.local/bin/nook update --quiet

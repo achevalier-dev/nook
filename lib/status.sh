@@ -55,6 +55,24 @@ cmd_status() {
   fi
 }
 
+# What this machine's own copy of nook is, and whether it is current. No fetch:
+# the answer comes from whatever the last pull or `nook upgrade` already knew, so
+# `nook doctor` stays a local command that works on a dead network.
+cli_state() {
+  command -v git >/dev/null && [[ -d $ROOT/.git ]] || { echo "not a git checkout"; return 0; }
+
+  local head behind dirty=""
+  head=$(git -C "$ROOT" rev-parse --short HEAD 2>/dev/null || echo unknown)
+  [[ -n $(git -C "$ROOT" status --porcelain 2>/dev/null) ]] && dirty=", modified here"
+  behind=$(git -C "$ROOT" rev-list --count "HEAD..@{u}" 2>/dev/null || echo 0)
+
+  if ((behind > 0)); then
+    echo "$head, $behind commits behind$dirty — run: nook update"
+  else
+    echo "$head, updates $(update_timer_state)$dirty"
+  fi
+}
+
 # Prints every check even when an early one fails: "ssh is down" and "sshfs is
 # missing" are different problems and the second is worth knowing about now.
 # shellcheck disable=SC2120  # bin/nook passes --all through
@@ -136,6 +154,11 @@ cmd_doctor() {
   local dev
   dev=$(disk_device || true)
   check drive "${dev:-not attached here}"
+
+  # The failure this catches is not a broken box: it is a machine whose own copy
+  # of nook is old enough that commands the box supports are missing here, which
+  # reads as features that do not work rather than as a version.
+  check cli "$(cli_state)"
 
   return $bad
 }

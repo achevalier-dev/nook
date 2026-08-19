@@ -24,7 +24,7 @@ nook — your Raspberry Pi, from here
 
   nook adopt <host>         pair with a box that has run the boot script
   nook list                 every nook adopted here, default first
-  nook update               pull a newer nook and re-link it
+  nook update [--auto]      pull a newer nook and re-link it, or do it daily
   nook upgrade              newer images for its services, restart what changed
   nook use <name>           which one the other commands talk to
   nook status [--all]       temperature, disk, containers, who holds the drive
@@ -57,6 +57,8 @@ Setup
   nook adopt [<host>] [--as <name>]     pair with a box, or re-read its config
   nook boot <host> [-- <boot flags>]    run the boot script over SSH, then adopt
   nook update                           pull a newer nook and re-link it
+  nook update --auto | --no-auto        daily, on this machine, by itself
+  nook update --quiet                   what the timer runs: silent unless it moved
   nook upgrade [--services]             newer images, restarting only what changed
   nook upgrade --box                    re-run the boot script over there
   nook upgrade --auto | --no-auto       weekly, on the box, by itself
@@ -123,7 +125,7 @@ case $cmd in
     ;;
   update)
     source "$ROOT/lib/init.sh"
-    cmd_update "$ROOT"
+    cmd_update "$ROOT" "$@"
     ;;
   upgrade)
     source "$ROOT/lib/upgrade.sh"
