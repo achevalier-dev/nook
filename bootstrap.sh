@@ -120,6 +120,20 @@ esac
 echo
 bold "Done."
 echo
+
+# The two one-liners look alike and do opposite things. Anyone who ran this one
+# on the box they meant to turn into a nook should hear about it here, not when
+# `nook adopt` finds nothing to adopt.
+if [[ -r /proc/device-tree/model ]] && grep -qai "raspberry pi" /proc/device-tree/model; then
+  warn "this looks like a Raspberry Pi, and what you just installed is the client —"
+  warn "the half you run on the machine you sit at, to reach a nook."
+  warn ""
+  warn "To make *this* box a nook, run the boot script on it instead:"
+  warn "  curl -fsSL ${REPO_URL/github.com/raw.githubusercontent.com}/main/pi/boot.sh | bash"
+  warn ""
+  warn "Keeping the client here is fine — it is how this box would reach another one."
+  echo
+fi
 echo "  on the box:  curl -fsSL https://raw.githubusercontent.com/achevalier-dev/nook/main/pi/boot.sh | bash"
 echo "  here:        nook adopt <hostname>"
 echo

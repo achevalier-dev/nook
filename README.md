@@ -19,6 +19,15 @@ the SSH connection, the block device and the mount table, and nothing else — s
 every line on screen is printed by the same `cmd_` functions a real nook runs.
 `demo/record.sh` captures what they print and `demo/render.py` draws it.*
 
+## Two one-liners, and which is which
+
+| Where you run it | What it does |
+|---|---|
+| **on the box** — `pi/boot.sh` | turns a Pi or mini PC *into* a nook: Tailscale, the external disk, Docker, the drive export |
+| **on your machine** — `bootstrap.sh` | installs the `nook` command you drive it with |
+
+Both, in that order. `bootstrap.sh` says so if you run it on a Raspberry Pi.
+
 ## Getting there
 
 Here, once:
