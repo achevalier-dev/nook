@@ -59,3 +59,31 @@ cmd_forget() {
   write_ssh_config
   echo "forgot $name"
 }
+
+# nook update — pull the checkout this command runs from and re-link. Without
+# it, a fix means remembering where bootstrap put the clone, which is a thing
+# nobody should have to know.
+cmd_update() {
+  local root=$1
+  [[ -d $root/.git ]] || die "$root is not a git checkout — re-run the bootstrap to update"
+  need git
+
+  local before after
+  before=$(git -C "$root" rev-parse --short HEAD)
+  git -C "$root" pull --quiet --ff-only || die "could not fast-forward $root — is it modified?"
+  after=$(git -C "$root" rev-parse --short HEAD)
+
+  if [[ $before == "$after" ]]; then
+    echo "already up to date ($after)"
+    return 0
+  fi
+
+  echo "updated $before -> $after"
+  git -C "$root" log --oneline "$before..$after" | sed 's/^/  /'
+  # install.sh is where the symlinks, the unit and the skill come from, and a
+  # new version may add to them.
+  NOOK_FROM_BOOTSTRAP=1 bash "$root/install.sh" >/dev/null
+  echo
+  echo "re-adopt to pick up anything that changed in how boxes are recorded:"
+  echo "  nook adopt"
+}

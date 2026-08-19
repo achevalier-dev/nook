@@ -24,6 +24,7 @@ nook — your Raspberry Pi, from here
 
   nook adopt <host>         pair with a box that has run the boot script
   nook list                 every nook adopted here, default first
+  nook update               pull a newer nook and re-link it
   nook use <name>           which one the other commands talk to
   nook status [--all]       temperature, disk, containers, who holds the drive
   nook doctor [--all]       check every moving part and name the broken one
@@ -49,6 +50,7 @@ nook — your Raspberry Pi, from here
 Setup
   nook adopt [<host>] [--as <name>]     pair with a box, or re-read its config
   nook boot <host> [-- <boot flags>]    run the boot script over SSH, then adopt
+  nook update                           pull a newer nook and re-link it
   nook version                          which version is installed
 
 More than one box
@@ -100,6 +102,10 @@ case $cmd in
   use | list | forget)
     source "$ROOT/lib/init.sh"
     "cmd_$cmd" "$@"
+    ;;
+  update)
+    source "$ROOT/lib/init.sh"
+    cmd_update "$ROOT"
     ;;
   adopt | boot)
     source "$ROOT/lib/adopt.sh"

@@ -37,7 +37,7 @@ cmd_status() {
     "load       \(.load)   temp \(.temp)°C",
     "disk       \((.disk.used/1073741824)|floor)G used of \((.disk.size/1073741824)|floor)G  ·  \((.disk.avail/1073741824)|floor)G free",
     "containers \(.containers) running",
-    "drive      \(.transport), \(if .attached > 0 then "attached by \(.attached)" else "free" end)"
+    "drive      \(if .transport == "none" then "none on this box" else "\(.transport), \(if .attached > 0 then "attached by \(.attached)" else "free" end)" end)"
   ' <<<"$json"
 
   if mountpoint -q "$NOOK_MOUNT"; then

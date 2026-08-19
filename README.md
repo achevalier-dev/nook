@@ -263,6 +263,7 @@ real certificate.
 nook adopt [host] [--as name]   pair with a box that has run the boot script
 nook boot <host>       run the boot script over SSH, then adopt it
 nook list              every nook adopted here, default marked *
+nook update            pull a newer nook and re-link it
 nook use <name>        which one the other commands talk to
 nook forget <name>     drop one from this machine only
 nook status [--json] [--all]    temperature, disk, containers, the drive
@@ -282,6 +283,10 @@ nook vault init [name] a bare git repo for an Obsidian vault
 nook ssh
 nook help --all        every command
 ```
+
+`nook update` pulls the checkout the command runs from — bootstrap puts it in
+`~/.local/share/nook` — and re-links it, so a fix does not mean remembering
+where that is.
 
 `NOOK=<name>` picks a nook for one command. `NOOK_HOME` moves the whole config
 directory, which is how a throwaway experiment stays out of the real one.
