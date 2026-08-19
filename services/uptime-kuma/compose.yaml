@@ -1,0 +1,7 @@
+services:
+  uptime-kuma:
+    image: louislam/uptime-kuma:1
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:3001:3001"]
+    volumes:
+      - ${NOOK_DATA}/apps/uptime-kuma:/app/data

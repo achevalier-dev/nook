@@ -1,3 +1,25 @@
+# Services and containers
+
+## The catalogue
+
+`nook services` lists a short curated set; `nook install <name>` deploys one.
+Each is `services/<name>/compose.yaml` in the repository, deployed through the
+same Docker context as everything else.
+
+Two conventions, and a change that breaks either is wrong:
+
+- data in `$NOOK_DATA/apps/<name>` — one directory to back up, one to delete
+- a library in `$NOOK_DATA/files/<something>`, which is the shared folder, so
+  `nook push` feeds it
+
+Ports bind `${NOOK_TS_IP}`, never `0.0.0.0`. `test/services_test.sh` fails on a
+service that publishes on every interface, that collides with another's port, or
+that mounts anything outside `$NOOK_DATA`. `home-assistant` is the documented
+exception: host networking, because LAN discovery does not survive a bridge.
+
+`nook uninstall` stops the containers and leaves the data — "uninstall" and
+"delete everything I put in it" should not be the same word.
+
 # Containers
 
 Compose files live on the machine you use. The containers run on the Pi. There

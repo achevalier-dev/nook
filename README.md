@@ -237,6 +237,41 @@ minutes and pull-on-startup. The vault gets history, conflicts are git conflicts
 you can actually resolve, and it works offline by construction. Mobile Obsidian
 speaks the same remote.
 
+## Services
+
+The things people actually put on a home server, one command each:
+
+```bash
+nook services            # the catalogue, * marks what is running
+nook install jellyfin
+nook uninstall jellyfin  # stops it; its data stays
+```
+
+| | |
+|---|---|
+| `jellyfin` | films and television |
+| `audiobookshelf` | audiobooks and podcasts |
+| `navidrome` | music, to anything that speaks Subsonic |
+| `paperless` | scans and documents, searchable |
+| `vaultwarden` | Bitwarden-compatible password vault |
+| `home-assistant` | home automation |
+| `uptime-kuma` | watches whether your things are up |
+| `dockge` | a web UI for the stacks on the box |
+| `n8n` | wires services together |
+| `actual` | envelope budgeting |
+
+Two conventions hold it together. Data lives in `/mnt/nook/apps/<name>`, so a
+box is backed up by copying one directory. A library lives in the **shared
+folder** — `nook push ~/Films/thing.mkv media/` and Jellyfin has it, drop a PDF
+in `documents/inbox` and Paperless files it.
+
+Every port binds the box's tailnet address, never `0.0.0.0`. Tailscale already
+encrypts and authenticates everything reaching it, and a home server that
+quietly listens on café wifi is how people get hurt. `home-assistant` is the one
+exception, and says so: it needs host networking to discover things on your LAN.
+
+Anything not in the list is still just compose — `nook up ~/stacks/whatever`.
+
 ## Containers
 
 Compose files stay on your machine; the containers run on the Pi. No editing
@@ -279,6 +314,8 @@ nook format            erase the drive and make a filesystem — asks first
 nook grow              after a resize, fill the new space
 nook disk [--local]    what the drive is doing
 
+nook services          the catalogue, and what is running
+nook install <name>    deploy one; nook uninstall <name> stops it
 nook up / down / ps / logs
 nook vault init [name] a bare git repo for an Obsidian vault
 nook ssh

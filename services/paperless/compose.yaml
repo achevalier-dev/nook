@@ -1,0 +1,34 @@
+services:
+  broker:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - ${NOOK_DATA}/apps/paperless/redis:/data
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    volumes:
+      - ${NOOK_DATA}/apps/paperless/db:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: paperless
+      POSTGRES_USER: paperless
+      POSTGRES_PASSWORD: paperless
+
+  webserver:
+    image: ghcr.io/paperless-ngx/paperless-ngx:latest
+    restart: unless-stopped
+    depends_on: [db, broker]
+    ports: ["${NOOK_TS_IP}:8000:8000"]
+    volumes:
+      - ${NOOK_DATA}/apps/paperless/data:/usr/src/paperless/data
+      - ${NOOK_DATA}/apps/paperless/media:/usr/src/paperless/media
+      # Drop a PDF in the shared folder and it gets filed.
+      - ${NOOK_DATA}/files/documents/inbox:/usr/src/paperless/consume
+    environment:
+      PAPERLESS_REDIS: redis://broker:6379
+      PAPERLESS_DBHOST: db
+      PAPERLESS_DBPASS: paperless
+      PAPERLESS_URL: http://${NOOK_HOST}:8000
+      PAPERLESS_TIME_ZONE: ${TZ:-UTC}
+      PAPERLESS_OCR_LANGUAGE: eng

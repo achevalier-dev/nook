@@ -1,0 +1,14 @@
+services:
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:5678:5678"]
+    volumes:
+      - ${NOOK_DATA}/apps/n8n:/home/node/.n8n
+      - ${NOOK_DATA}/files:/files
+    environment:
+      N8N_HOST: ${NOOK_HOST}
+      N8N_PORT: 5678
+      WEBHOOK_URL: http://${NOOK_HOST}:5678/
+      GENERIC_TIMEZONE: ${TZ:-UTC}
+      N8N_RUNNERS_ENABLED: "true"

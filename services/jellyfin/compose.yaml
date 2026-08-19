@@ -1,0 +1,16 @@
+services:
+  jellyfin:
+    image: jellyfin/jellyfin:latest
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:8096:8096"]
+    volumes:
+      - ${NOOK_DATA}/apps/jellyfin/config:/config
+      - ${NOOK_DATA}/apps/jellyfin/cache:/cache
+      # The library is the shared folder, so anything you `nook push` shows up.
+      - ${NOOK_DATA}/files/media:/media:ro
+    environment:
+      TZ: ${TZ:-UTC}
+    # For hardware decoding, add this on a box that has a GPU node — it is left
+    # out because compose has no way to make a device optional, and a missing
+    # /dev/dri turns a working install into a failed one:
+    #   devices: ["/dev/dri:/dev/dri"]

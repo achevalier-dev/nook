@@ -1,0 +1,12 @@
+services:
+  audiobookshelf:
+    image: ghcr.io/advplyr/audiobookshelf:latest
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:13378:80"]
+    volumes:
+      - ${NOOK_DATA}/files/audiobooks:/audiobooks
+      - ${NOOK_DATA}/files/podcasts:/podcasts
+      - ${NOOK_DATA}/apps/audiobookshelf/config:/config
+      - ${NOOK_DATA}/apps/audiobookshelf/metadata:/metadata
+    environment:
+      TZ: ${TZ:-UTC}

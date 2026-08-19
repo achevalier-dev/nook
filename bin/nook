@@ -33,6 +33,8 @@ nook — your Raspberry Pi, from here
   nook attach               the drive as a real block device — one at a time
   nook eject                flush it and hand it back
 
+  nook services             things worth running, and what is running
+  nook install <name>       put one on the box — jellyfin, paperless, …
   nook up [dir]             docker compose up -d, running over there
   nook push <src> [dest]    rsync into the shared folder
   nook vault init [name]    a bare git repo for an Obsidian vault
@@ -72,6 +74,11 @@ The drive — exactly one machine at a time
   nook disk [--local]                   transport, size, who is attached
   nook format                           erase it and make a filesystem — asks
   nook grow                             after a resize, fill the new space
+
+Services
+  nook services                         the catalogue, and what is running
+  nook install <name>…                  deploy one, data under $NOOK_DATA/apps
+  nook uninstall <name>                 stop it; its data stays
 
 Containers
   nook up [dir]                         compose up -d, on the nook
@@ -123,6 +130,10 @@ case $cmd in
     ;;
   up | down | ps | logs)
     source "$ROOT/lib/containers.sh"
+    "cmd_$cmd" "$@"
+    ;;
+  services | install | uninstall)
+    source "$ROOT/lib/services.sh"
     "cmd_$cmd" "$@"
     ;;
   vault)

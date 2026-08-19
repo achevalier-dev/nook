@@ -1,0 +1,14 @@
+services:
+  homeassistant:
+    image: ghcr.io/home-assistant/home-assistant:stable
+    restart: unless-stopped
+    # Host networking on purpose: discovery of things on your LAN — Chromecasts,
+    # HomeKit, mDNS — does not survive a bridge. It means the port is on every
+    # interface the box has, unlike every other service here.
+    network_mode: host
+    privileged: true
+    volumes:
+      - ${NOOK_DATA}/apps/home-assistant:/config
+      - /run/dbus:/run/dbus:ro
+    environment:
+      TZ: ${TZ:-UTC}

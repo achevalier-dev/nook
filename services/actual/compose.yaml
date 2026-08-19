@@ -1,0 +1,9 @@
+services:
+  actual:
+    image: ghcr.io/actualbudget/actual-server:latest
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:5006:5006"]
+    volumes:
+      - ${NOOK_DATA}/apps/actual:/data
+    environment:
+      TZ: ${TZ:-UTC}

@@ -1,0 +1,13 @@
+services:
+  vaultwarden:
+    image: vaultwarden/server:latest
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:8222:80"]
+    volumes:
+      - ${NOOK_DATA}/apps/vaultwarden:/data
+    environment:
+      # Reachable only over the tailnet, which is already encrypted end to end,
+      # so the browser's secure-context rules are the only thing to satisfy.
+      DOMAIN: http://${NOOK_HOST}:8222
+      SIGNUPS_ALLOWED: "true"
+      TZ: ${TZ:-UTC}
