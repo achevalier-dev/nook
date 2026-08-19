@@ -34,6 +34,23 @@ for f in pi/modules/*.sh pi/boot.sh; do
   }
 done
 
+# The drive is a preallocated image, and the one place it must never be created
+# is the disk the box boots from — that fills the card and takes the whole box
+# down, which is exactly what happened before this check existed.
+grep -q 'NOOK_HAS_EXTERNAL' pi/modules/35-disk.sh || {
+  echo "35-disk does not check for an external disk before creating the image" >&2
+  bad=1
+}
+grep -q 'NOOK_HAS_EXTERNAL' pi/modules/30-storage.sh || {
+  echo "30-storage never reports whether it found an external disk" >&2
+  bad=1
+}
+# A failed fallocate leaves whatever it managed to reserve behind.
+grep -A3 'fallocate -l' pi/modules/35-disk.sh | grep -q 'rm -f' || {
+  echo "35-disk does not clean up a partial image when fallocate fails" >&2
+  bad=1
+}
+
 # The drive, Samba and USB gadget are optional. A box without them is still
 # worth adopting, so none of them may end the run — /etc/nook.conf is written
 # last, and a box that never gets one cannot be adopted at all.

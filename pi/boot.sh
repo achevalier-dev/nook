@@ -123,6 +123,33 @@ session_is_fragile() {
   return 1
 }
 
+# Printing "now go and run journalctl" is asking someone to do what this can do
+# itself. Follow the unit until it stops, then hand back its result.
+follow_boot() {
+  local pid status
+  journalctl -fu nook-boot --no-pager &
+  pid=$!
+  # The unit's own state is the only thing that knows when it is done; the log
+  # has no reliable last line. A moment first, because a just-started unit is
+  # not active yet.
+  sleep 2
+  while systemctl is-active --quiet nook-boot; do sleep 2; done
+  # Let the last lines land before the pager is killed.
+  sleep 1
+  kill "$pid" 2>/dev/null || true
+  wait "$pid" 2>/dev/null || true
+
+  status=$(systemctl show -p Result --value nook-boot 2>/dev/null || echo unknown)
+  systemctl reset-failed nook-boot 2>/dev/null || true
+  if [[ $status == success ]]; then
+    exit 0
+  fi
+  echo
+  echo "  The run did not finish ($status). The log above says where it stopped;" >&2
+  echo "  fixing that and running this again picks up where it left off." >&2
+  exit 1
+}
+
 if [[ -z ${NOOK_DETACHED:-} ]] && { [[ $NOOK_DETACH == 1 ]] || session_is_fragile; }; then
   if command -v systemd-run >/dev/null; then
     cat <<'DETACH'
@@ -130,9 +157,8 @@ if [[ -z ${NOOK_DETACHED:-} ]] && { [[ $NOOK_DETACH == 1 ]] || session_is_fragil
   This session can be cut off by the services this script restarts, so the work
   runs in the background instead. Nothing is lost if you get disconnected.
 
-      journalctl -fu nook-boot
-
-  Tailscale's login link appears in that log.
+  Tailscale's login link appears below when it is ready. Ctrl-C stops watching;
+  the run itself keeps going, and re-running this command picks the log back up.
 
 DETACH
     # A run already going is the common case for anyone who lost their session
@@ -140,15 +166,15 @@ DETACH
     if systemctl is-active --quiet nook-boot 2>/dev/null; then
       echo "  A run is already going. Following it instead of starting another."
       echo
-      exec journalctl -fu nook-boot
+      follow_boot
     fi
     # A finished or failed unit stays loaded until something clears it, and
     # systemd-run refuses to reuse the name while it is there.
     systemctl stop nook-boot 2>/dev/null || true
     systemctl reset-failed nook-boot 2>/dev/null || true
-    # --collect so the next run does not have to do that clearing at all.
-    exec systemd-run --unit=nook-boot --description="nook boot script" \
-      --collect --setenv=NOOK_DETACHED=1 --quiet -- bash -c "$(rerun_command)"
+    systemd-run --unit=nook-boot --description="nook boot script" \
+      --setenv=NOOK_DETACHED=1 --quiet -- bash -c "$(rerun_command)"
+    follow_boot
   fi
   echo "    warning: no systemd-run here — staying in the foreground" >&2
 fi

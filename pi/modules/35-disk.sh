@@ -15,11 +15,45 @@
 #          Chosen as the fallback for exactly that reason.
 
 IMG=$NOOK_DATA/disk.img
-[[ -n ${NOOK_TS_IP:-} ]] || { warn "no tailnet address — skipping the network disk"; return 0; }
+
+if [[ -z ${NOOK_TS_IP:-} ]]; then
+  warn "no tailnet address — skipping the network drive"
+  NOOK_TRANSPORT=none
+  return 0
+fi
+
+# The drive is one big preallocated file. On the system disk that means filling
+# the card the box boots from, so without an external disk this half does not
+# run at all — the shared folder does, and the box is still worth adopting.
+if [[ ${NOOK_HAS_EXTERNAL:-0} != 1 ]]; then
+  warn "no external disk — skipping the network drive"
+  warn "plug one in and run this script again to add it"
+  NOOK_TRANSPORT=none
+  return 0
+fi
 
 if [[ ! -f $IMG ]]; then
-  note "creating $IMG ($NOOK_DISK_SIZE, sparse — it costs nothing until written)"
-  fallocate -l "$NOOK_DISK_SIZE" "$IMG" || truncate -s "$NOOK_DISK_SIZE" "$IMG"
+  # fallocate reserves real blocks. That is deliberate — a sparse image that
+  # runs out of room mid-write hands the machine that mounted it an I/O error
+  # on a live filesystem — but it means the size has to fit before we start.
+  free_bytes=$(df -B1 --output=avail "$NOOK_DATA" | tail -n1 | tr -d ' ')
+  want_bytes=$(numfmt --from=iec "${NOOK_DISK_SIZE%B}" 2>/dev/null || echo 0)
+
+  # Half the disk, so the shared folder is not squeezed out by a drive nobody
+  # has written to yet.
+  if ((want_bytes == 0 || want_bytes > free_bytes / 2)); then
+    NOOK_DISK_SIZE=$(numfmt --to=iec --format='%.0f' $((free_bytes / 2)))
+    note "sizing the drive at $NOOK_DISK_SIZE — half of what is free on $NOOK_DATA"
+  fi
+
+  note "creating $IMG ($NOOK_DISK_SIZE)"
+  if ! fallocate -l "$NOOK_DISK_SIZE" "$IMG" 2>/dev/null; then
+    # Whatever it managed to reserve before giving up is still on the disk.
+    rm -f "$IMG"
+    warn "could not reserve $NOOK_DISK_SIZE on $NOOK_DATA — skipping the network drive"
+    NOOK_TRANSPORT=none
+    return 0
+  fi
   chown "$NOOK_USER:$NOOK_USER" "$IMG"
   chmod 600 "$IMG"
 fi

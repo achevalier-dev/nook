@@ -68,9 +68,16 @@ fi
 cat >"$stub/systemctl" <<'STUB'
 #!/usr/bin/env bash
 [[ $* == *is-active* ]] && exit 3
+[[ $* == *"show -p Result"* ]] && { echo success; exit 0; }
 exit 0
 STUB
 chmod +x "$stub/systemctl"
+
+cat >"$stub/journalctl" <<'STUB'
+#!/usr/bin/env bash
+printf 'journalctl %s\n' "$*"
+STUB
+chmod +x "$stub/journalctl"
 
 out=$(PATH="$stub:$PATH" unshare -r bash pi/boot.sh --detach --name testbox 2>&1)
 grep -q 'systemd-run .*--unit=nook-boot' <<<"$out" || {
@@ -85,8 +92,10 @@ grep -q -- '--name testbox' <<<"$out" || {
   echo "--detach lost the other flags: $out" >&2
   exit 1
 }
-grep -q -- '--collect' <<<"$out" || {
-  echo "the transient unit is not --collect, so a second run collides with it: $out" >&2
+# Telling someone to go and run journalctl is asking them to do what the script
+# can do itself.
+grep -q 'journalctl .*-fu nook-boot' <<<"$out" || {
+  echo "the detached run did not follow its own log: $out" >&2
   exit 1
 }
 
@@ -98,19 +107,23 @@ grep -q 'systemd-run' <<<"$out" && {
 }
 
 # And when one is already running, join it rather than failing to claim the name.
-cat >"$stub/systemctl" <<'STUB'
+# is-active answers yes once — enough to take the "already going" branch — then
+# no, so the follow loop terminates instead of spinning forever.
+cat >"$stub/systemctl" <<STUB
 #!/usr/bin/env bash
-[[ $* == *is-active* ]] && exit 0
+state=$stub/seen-active
+if [[ \$* == *is-active* ]]; then
+  [[ -f \$state ]] && exit 3
+  : >"\$state"
+  exit 0
+fi
+[[ \$* == *"show -p Result"* ]] && { echo success; exit 0; }
 exit 0
 STUB
-cat >"$stub/journalctl" <<'STUB'
-#!/usr/bin/env bash
-printf 'journalctl %s
-' "$*"
-STUB
-chmod +x "$stub/journalctl"
+chmod +x "$stub/systemctl"
+
 out=$(PATH="$stub:$PATH" unshare -r bash pi/boot.sh --detach 2>&1)
-grep -q 'journalctl -fu nook-boot' <<<"$out" || {
+grep -q 'journalctl .*-fu nook-boot' <<<"$out" || {
   echo "a second run did not follow the one already going: $out" >&2
   exit 1
 }
@@ -119,4 +132,4 @@ grep -q 'systemd-run' <<<"$out" && {
   exit 1
 }
 
-echo "boot: survives curl|bash, keeps its flags, prefers a checkout, detaches, joins a run in progress"
+echo "boot: survives curl|bash, keeps its flags, prefers a checkout, detaches, follows its own log"
