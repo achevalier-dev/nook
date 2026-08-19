@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+# nook-upgrade — pull newer images for every stack on this box and restart the
+# ones that changed. Run by hand, by `nook upgrade` from another machine, or by
+# nook-upgrade.timer.
+#
+# Only services are touched here. The OS has unattended-upgrades for its
+# security updates, and nook itself is re-run by whoever runs the boot script.
+
+set -euo pipefail
+
+# shellcheck disable=SC1091
+. /etc/nook.conf
+
+STACKS=$NOOK_DATA/stacks
+QUIET=0
+[[ ${1:-} == --quiet ]] && QUIET=1
+
+say() { ((QUIET)) || printf '%s\n' "$*"; }
+
+[[ -d $STACKS ]] || { say "no stacks on this box"; exit 0; }
+
+changed=()
+for dir in "$STACKS"/*/; do
+  [[ -f $dir/compose.yaml ]] || continue
+  name=$(basename "$dir")
+
+  before=$(docker compose -p "$name" --project-directory "$dir" images --quiet 2>/dev/null | sort || true)
+  docker compose -p "$name" --project-directory "$dir" pull --quiet 2>/dev/null || {
+    say "$name: could not reach the registry, left alone"
+    continue
+  }
+  after=$(docker compose -p "$name" --project-directory "$dir" images --quiet 2>/dev/null | sort || true)
+
+  # Restarting a service that did not change costs downtime for nothing.
+  if [[ $before == "$after" ]]; then
+    say "$name: up to date"
+    continue
+  fi
+  docker compose -p "$name" --project-directory "$dir" up -d
+  changed+=("$name")
+done
+
+if ((${#changed[@]})); then
+  say "upgraded: ${changed[*]}"
+  # Only after something actually changed, and only images nothing refers to.
+  docker image prune -f >/dev/null 2>&1 || true
+else
+  say "everything was already current"
+fi

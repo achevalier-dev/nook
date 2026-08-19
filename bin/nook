@@ -25,6 +25,7 @@ nook — your Raspberry Pi, from here
   nook adopt <host>         pair with a box that has run the boot script
   nook list                 every nook adopted here, default first
   nook update               pull a newer nook and re-link it
+  nook upgrade              newer images for its services, restart what changed
   nook use <name>           which one the other commands talk to
   nook status [--all]       temperature, disk, containers, who holds the drive
   nook doctor [--all]       check every moving part and name the broken one
@@ -36,6 +37,7 @@ nook — your Raspberry Pi, from here
   nook services             things worth running, and what is running
   nook install <name>       put one on the box — jellyfin, paperless, …
   nook serve                give them https names on your tailnet
+  nook open [service]       open one in a browser, no address to remember
   nook up [dir]             docker compose up -d, running over there
   nook push <src> [dest]    rsync into the shared folder
   nook vault init [name]    a bare git repo for an Obsidian vault
@@ -54,6 +56,9 @@ Setup
   nook adopt [<host>] [--as <name>]     pair with a box, or re-read its config
   nook boot <host> [-- <boot flags>]    run the boot script over SSH, then adopt
   nook update                           pull a newer nook and re-link it
+  nook upgrade [--services]             newer images, restarting only what changed
+  nook upgrade --box                    re-run the boot script over there
+  nook upgrade --auto | --no-auto       weekly, on the box, by itself
   nook version                          which version is installed
 
 More than one box
@@ -81,6 +86,7 @@ Services
   nook install <name>…                  deploy one, data under $NOOK_DATA/apps
   nook uninstall <name>                 stop it; its data stays
   nook serve [--off]                    https://<box>.<tailnet>.ts.net, real cert
+  nook open [service]                   open it in a browser; the index by default
 
 Containers
   nook up [dir]                         compose up -d, on the nook
@@ -116,6 +122,10 @@ case $cmd in
     source "$ROOT/lib/init.sh"
     cmd_update "$ROOT"
     ;;
+  upgrade)
+    source "$ROOT/lib/upgrade.sh"
+    cmd_upgrade "$@"
+    ;;
   adopt | boot)
     source "$ROOT/lib/adopt.sh"
     "cmd_$cmd" "$@"
@@ -134,7 +144,7 @@ case $cmd in
     source "$ROOT/lib/containers.sh"
     "cmd_$cmd" "$@"
     ;;
-  services | install | uninstall | serve)
+  services | install | uninstall | serve | open)
     source "$ROOT/lib/services.sh"
     "cmd_$cmd" "$@"
     ;;

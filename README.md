@@ -294,6 +294,19 @@ certificate the tailnet issues for your box:
 Nothing bought, nothing renewed, nothing opened on a router, and it works from a
 phone on mobile data. `nook serve --off` puts it back.
 
+That domain is not memorable, and it does not have to be:
+
+```bash
+nook open            # the index page
+nook open jellyfin   # straight to it
+```
+
+Bookmark the index once and the rest are links on it. And the ugly half of that
+name is changeable: `taild2db3f.ts.net` is a default Tailscale hands out, and
+the admin console renames it under **DNS → Tailnet name**. Rename it once and
+every address above becomes `nook.something-you-chose.ts.net`. `nook serve` says
+so when it spots a default one.
+
 It proxies to the ports the services already publish rather than moving them
 behind it, so turning serve off does not take anything down. If the tailnet has
 no HTTPS certificates yet, `nook serve` says exactly where to turn them on
@@ -343,6 +356,9 @@ nook disk [--local]    what the drive is doing
 
 nook services          the catalogue, and what is running
 nook install <name>    deploy one; nook uninstall <name> stops it
+nook serve             https names on your tailnet, with a real certificate
+nook open [service]    open it, so there is no address to remember
+nook upgrade           newer images; --box, --auto, --no-auto
 nook up / down / ps / logs
 nook vault init [name] a bare git repo for an Obsidian vault
 nook ssh
@@ -393,6 +409,31 @@ for.
 network at all. It exports **read-only** on purpose: the host caches the
 filesystem and assumes exclusive ownership, so the image can only ever be live
 on one side.
+
+## Keeping it current
+
+Three separate things go out of date, and conflating them is how one gets
+forgotten:
+
+```bash
+nook update            # the nook command on this machine
+nook upgrade           # newer images for its services, restarting what changed
+nook upgrade --box     # re-run the box's boot script — it is idempotent
+```
+
+`nook upgrade` restarts only what actually changed, because restarting a service
+that did not is downtime for nothing. It also says when the client itself is
+behind, rather than pulling out from under the command you are running.
+
+The box does it on its own once a week — `nook upgrade --auto` / `--no-auto`,
+Sunday at 04:00 with an hour of jitter, and `Persistent=true` so a box that was
+switched off catches up. The OS is separate: `unattended-upgrades` handles its
+security updates and nothing here touches it.
+
+Every service's compose file lives on the **box**, at `/mnt/nook/stacks/<name>`,
+not on your laptop. That is what makes any of this possible without you: the box
+can restart, upgrade and be inspected on its own, and `dockge` edits the same
+files.
 
 ## When something is off
 

@@ -23,6 +23,15 @@ It proxies to the ports the services already publish rather than moving them to
 loopback, so `nook serve --off` does not take anything down. It needs HTTPS
 certificates enabled tailnet-wide, and says so when they are not.
 
+Stacks live on the **box**, at `$NOOK_DATA/stacks/<name>`, with a `.env` beside
+each one carrying `NOOK_DATA`, `NOOK_TS_IP`, `NOOK_HOST` and `TZ`. That is
+deliberate and worth preserving: a service whose compose file only exists on
+somebody's laptop cannot be restarted, upgraded or inspected without that
+laptop, and the weekly `nook-upgrade.timer` on the box depends on it.
+
+`nook upgrade` pulls newer images and restarts only what changed. `nook open`
+exists so nobody has to remember a tailnet domain and a port.
+
 `nook uninstall` stops the containers and leaves the data — "uninstall" and
 "delete everything I put in it" should not be the same word.
 

@@ -30,13 +30,41 @@ running_services() {
     jq -r '.[].Name' 2>/dev/null || true
 }
 
-# The environment every compose file in the catalogue is written against.
+# The environment every compose file in the catalogue is written against,
+# written next to the stack on the box so compose picks it up there too. That is
+# what lets the box upgrade and restart its own services with nothing of yours
+# involved — including from a timer, at four in the morning.
 service_env() {
   NOOK_TS_IP=$(remote tailscale ip -4 2>/dev/null | head -n1)
   [[ -n $NOOK_TS_IP ]] || die "$NOOK is not on a tailnet — services bind its tailnet address"
   export NOOK_TS_IP NOOK_DATA NOOK_HOST
   export TZ=${TZ:-$(remote timedatectl show -p Timezone --value 2>/dev/null || echo UTC)}
   export DOCKER_CONTEXT=$NOOK_CONTEXT
+}
+
+# Where a stack lives on the box. Deliberately the box and not here: a service
+# whose compose file only exists on somebody's laptop cannot be restarted,
+# upgraded or even looked at without that laptop.
+stack_dir() { echo "$NOOK_DATA/stacks/$1"; }
+
+push_stack() { # <name>
+  local name=$1 dir
+  dir=$(stack_dir "$name")
+  remote "sudo install -d -o \$(id -u) -g \$(id -g) $dir"
+  remote "cat > $dir/compose.yaml" <"$(services_root)/$name/compose.yaml"
+  remote "cat > $dir/.env" <<ENV
+NOOK_DATA=$NOOK_DATA
+NOOK_TS_IP=$NOOK_TS_IP
+NOOK_HOST=$NOOK_HOST
+TZ=$TZ
+ENV
+}
+
+# Compose, run on the box against the stack that lives there.
+stack_compose() { # <name> <compose args…>
+  local name=$1
+  shift
+  remote "cd $(stack_dir "$name") && docker compose -p $name $*"
 }
 
 cmd_services() {
@@ -140,7 +168,8 @@ cmd_install() {
     [[ -n $library ]] && remote "sudo install -d -o \$(id -u) -g \$(id -g) $NOOK_DATA/$library"
 
     log "installing $name on $NOOK"
-    docker compose --project-name "$name" --project-directory "$dir" up -d
+    push_stack "$name"
+    stack_compose "$name" up -d
 
     port=$(service_field "$name" port "")
     if [[ -n $port ]]; then
@@ -154,8 +183,9 @@ cmd_install() {
   # The index goes up with the first service, so there is always one address
   # worth bookmarking rather than a list of port numbers to remember.
   if [[ $* != *home* ]] && ! grep -qx home <<<"$(running_services)"; then
-    log "adding the index page at http://$NOOK_HOST/"
-    docker compose --project-name home --project-directory "$(services_root)/home" up -d >/dev/null
+    log "adding the index page"
+    push_stack home
+    stack_compose home up -d >/dev/null 2>&1
   fi
   write_home_page
 }
@@ -172,7 +202,8 @@ cmd_uninstall() {
     dir=$(services_root)/$name
     [[ -d $dir ]] || die "no such service: $name"
     service_env
-    docker compose --project-name "$name" --project-directory "$dir" down
+    stack_compose "$name" down
+    remote "rm -rf $(stack_dir "$name")"
     echo "$name is gone. Its data is still in $NOOK_DATA/apps/$name —"
     echo "  nook ssh sudo rm -rf $NOOK_DATA/apps/$name   removes that too."
   done
@@ -231,5 +262,41 @@ cmd_serve() {
   done
 
   write_home_page
+  echo
+  echo "  Bookmark the first one. It lists the rest, and it is the only address"
+  echo "  worth remembering — or use: nook open [service]"
+
+  # Almost nobody knows this is changeable, and it is the difference between an
+  # address you can say out loud and one you have to copy and paste.
+  if [[ $dns == *.tail*.ts.net ]]; then
+    echo
+    echo "  That tailnet is called $(cut -d. -f2- <<<"$dns"). You can rename it to"
+    echo "  something you can actually say, once, in the Tailscale admin console"
+    echo "  under DNS → Tailnet name. Every address above follows it."
+  fi
   notify "serving over https at $dns"
+}
+
+# nook open — the answer to "what was that address again". Nobody should have to
+# hold a tailnet domain and a port number in their head to watch a film.
+cmd_open() {
+  load_config
+  need jq
+  local name=${1:-home} port base url
+
+  [[ -d $(services_root)/$name ]] || die "no such service: $name — nook services lists them"
+  base=$(service_base || true)
+  port=$(service_field "$name" port "")
+  [[ -n $port ]] || die "$name has no web interface"
+
+  # The index answers on 443 once serve is on, so it needs no port.
+  if [[ $name == home ]] && [[ $base == https://* ]]; then
+    url=$base
+  else
+    url="$base:$port"
+  fi
+
+  echo "$url"
+  command -v xdg-open >/dev/null && xdg-open "$url" >/dev/null 2>&1 &
+  return 0
 }

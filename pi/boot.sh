@@ -29,9 +29,10 @@ NOOK_FORMAT=${NOOK_FORMAT:-0}
 NOOK_SHARES=${NOOK_SHARES:-0}
 NOOK_USB_GADGET=${NOOK_USB_GADGET:-0}
 NOOK_DETACH=${NOOK_DETACH:-0}
+NOOK_AUTO_UPGRADE=${NOOK_AUTO_UPGRADE:-1}
 SKIP=()
 
-MODULES=(10-base 20-tailscale 30-storage 35-disk 40-docker 50-shares 60-usb-gadget)
+MODULES=(10-base 20-tailscale 30-storage 35-disk 40-docker 50-shares 60-usb-gadget 70-upgrade)
 
 # Kept whole, because the loop below consumes $@ and the sudo re-exec further
 # down still has to pass the flags on. Without this, `--format` is parsed here
@@ -48,6 +49,7 @@ nook boot
   --format          let nook create a filesystem on a blank external disk
   --shares          also run Samba, for phones and non-Linux machines
   --usb-gadget      also offer the disk over a USB-C cable (read the warning)
+  --no-auto-upgrade do not upgrade services weekly on their own
   --detach          run in the background, surviving a dropped connection
   --no-detach       stay in the foreground even on a fragile session
   --skip MODULE     skip a module by name, repeatable
@@ -63,6 +65,7 @@ while [[ $# -gt 0 ]]; do
   --format) NOOK_FORMAT=1; shift ;;
   --shares) NOOK_SHARES=1; shift ;;
   --usb-gadget) NOOK_USB_GADGET=1; shift ;;
+  --no-auto-upgrade) NOOK_AUTO_UPGRADE=0; shift ;;
   --detach) NOOK_DETACH=1; shift ;;
   --no-detach) NOOK_DETACH=0; NOOK_DETACHED=1; shift ;;
   --skip) SKIP+=("$2"); shift 2 ;;
@@ -277,6 +280,7 @@ case ${NOOK_TRANSPORT:-none} in
 esac
 
 row containers "$(command -v docker >/dev/null && echo "docker ready" || echo "not installed")"
+row upgrades "$(systemctl is-enabled nook-upgrade.timer >/dev/null 2>&1 && echo "weekly, automatic" || echo "manual")"
 [[ $NOOK_SHARES == 1 ]] && row samba "smb://$NOOK_NAME/files"
 
 cat <<NOTE
