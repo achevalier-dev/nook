@@ -74,6 +74,22 @@ entry is by UUID with `nofail`, so the Pi boots anyway and everything that
 depends on the disk quietly has nowhere to live — which looks like several
 unrelated failures at once. Check this before chasing them.
 
+## The boot script stopped in 10-base
+
+**`dpkg was interrupted`** — a package install on that box was cut short before
+nook ever ran, and apt refuses to do anything until it is finished. The script
+now completes it itself; if it cannot, do it by hand and re-run:
+
+```bash
+sudo dpkg --configure -a
+```
+
+**apt says the lock is held** — a freshly imaged Pi runs unattended-upgrades on
+first boot. Every apt call in the modules passes
+`-o DPkg::Lock::Timeout=300`, so this should only appear if something has been
+holding the lock for over five minutes. `sudo systemctl stop unattended-upgrades`
+and re-run, or wait.
+
 ## Re-running the boot script
 
 Safe, and usually the right repair for anything on the Pi side. It is

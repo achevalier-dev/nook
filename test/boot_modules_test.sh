@@ -34,5 +34,15 @@ for f in pi/modules/*.sh pi/boot.sh; do
   }
 done
 
-[[ $bad == 0 ]] && echo "boot: every module is listed, sourced-safe, and set -e clean"
+# A Pi runs unattended-upgrades on first boot, so any apt call that does not
+# wait for the lock is a coin flip on a freshly imaged card.
+while IFS= read -r line; do
+  grep -q 'DPkg::Lock::Timeout' <<<"$line" && continue
+  grep -q 'APT\[@\]' <<<"$line" && continue
+  echo "$line" >&2
+  echo "  ^ apt-get without DPkg::Lock::Timeout — it will fail on a first boot" >&2
+  bad=1
+done < <(grep -n 'apt-get [a-z]' pi/modules/*.sh pi/boot.sh | grep -v ':[0-9]*:#' || true)
+
+[[ $bad == 0 ]] && echo "boot: every module is listed, sourced-safe, set -e clean, and apt waits"
 exit $bad

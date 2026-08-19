@@ -5,7 +5,7 @@
 
 [[ $NOOK_SHARES == 1 ]] || return 0
 
-dpkg -s samba >/dev/null 2>&1 || apt-get install -y -qq samba
+dpkg -s samba >/dev/null 2>&1 || apt-get -o DPkg::Lock::Timeout=300 install -y -qq samba
 
 MARK_BEGIN="# >>> nook"
 MARK_END="# <<< nook"

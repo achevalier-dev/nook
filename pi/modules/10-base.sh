@@ -6,6 +6,24 @@
 
 export DEBIAN_FRONTEND=noninteractive
 
+# A Pi that has just been imaged is usually already running something that holds
+# the apt lock — unattended-upgrades fires on first boot. apt can wait for it
+# itself, which beats failing on a race the user cannot see.
+APT=(apt-get -o DPkg::Lock::Timeout=300 -qq)
+
+# apt refuses to do anything at all while a previous install is half-finished,
+# and the error it prints names the fix without applying it. This is that fix:
+# it only completes configuration of packages that are already unpacked, so
+# there is nothing here to lose, and it is a no-op when nothing is pending.
+if [[ -n $(dpkg --audit 2>/dev/null) ]]; then
+  warn "a previous package install was interrupted — finishing it before going on"
+  if ! dpkg --configure -a; then
+    warn "dpkg could not finish it. Fix that first, then re-run this script:"
+    warn "    sudo dpkg --configure -a"
+    return 1
+  fi
+fi
+
 if [[ $(hostname) != "$NOOK_NAME" ]]; then
   hostnamectl set-hostname "$NOOK_NAME"
   # Debian resolves the hostname through /etc/hosts, and sudo warns loudly on
@@ -21,7 +39,7 @@ fi
 # apt-get update is the slow part of a re-run, so only pay for it once a day.
 stamp=$NOOK_STATE/apt-updated
 if [[ ! -f $stamp ]] || [[ $(find "$stamp" -mtime +1 -print -quit) ]]; then
-  apt-get update -qq
+  "${APT[@]}" update
   touch "$stamp"
 fi
 
@@ -32,7 +50,7 @@ for pkg in "${PACKAGES[@]}"; do
 done
 if ((${#missing[@]})); then
   note "installing ${missing[*]}"
-  apt-get install -y -qq "${missing[@]}"
+  "${APT[@]}" install -y "${missing[@]}"
 fi
 
 # Security updates only, applied automatically. A box you reach twice a year is

@@ -36,7 +36,7 @@ fi
 
 # ── iSCSI ─────────────────────────────────────────────────────────────────────
 if [[ $NOOK_TRANSPORT == iscsi ]]; then
-  dpkg -s targetcli-fb >/dev/null 2>&1 || apt-get install -y -qq targetcli-fb
+  dpkg -s targetcli-fb >/dev/null 2>&1 || apt-get -o DPkg::Lock::Timeout=300 install -y -qq targetcli-fb
   target=$NOOK_IQN_BASE:$NOOK_NAME
 
   targetcli /backstores/fileio ls 2>/dev/null | grep -q "o- nook " ||
@@ -67,7 +67,7 @@ fi
 
 # ── NBD ───────────────────────────────────────────────────────────────────────
 if [[ $NOOK_TRANSPORT == nbd ]]; then
-  dpkg -s nbd-server >/dev/null 2>&1 || apt-get install -y -qq nbd-server
+  dpkg -s nbd-server >/dev/null 2>&1 || apt-get -o DPkg::Lock::Timeout=300 install -y -qq nbd-server
 
   # listenaddr is the security boundary here — NBD has no authentication at all,
   # so the export must never be offered on the LAN interface.
