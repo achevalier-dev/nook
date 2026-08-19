@@ -102,14 +102,20 @@ cmd_services() {
 
   running=$(running_services)
   printf '%-16s %-6s %s\n' NAME PORT WHAT
-  while read -r name; do
+
+  # Into an array first: service_port asks the box which port the index took,
+  # and ssh reads stdin — which here would be the rest of the catalogue.
+  local names=()
+  mapfile -t names < <(known_services)
+
+  for name in "${names[@]}"; do
     [[ -n $name ]] || continue
     summary=$(service_field "$name" summary)
     port=$(service_port "$name")
     installed=" "
     grep -qx "$name" <<<"$running" && installed="*"
     printf '%s %-14s %-6s %s\n' "$installed" "$name" "${port:-—}" "$summary"
-  done < <(known_services)
+  done
 
   echo
   echo "* is running.  nook install <name>   nook uninstall <name>"
