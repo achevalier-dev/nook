@@ -1,0 +1,11 @@
+services:
+  cloudflared:
+    image: wisdomsky/cloudflared-web:2026.5.0
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:14333:14333"]
+    volumes:
+      - ${NOOK_DATA}/apps/cloudflared/config:/config
+    environment:
+      TZ: ${TZ:-UTC}
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}

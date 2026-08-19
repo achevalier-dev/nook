@@ -1,0 +1,13 @@
+services:
+  handbrake:
+    image: jlesage/handbrake:v26.03.3
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:5800:5800"]
+    volumes:
+      - ${NOOK_DATA}/files:/storage
+      - ${NOOK_DATA}/apps/handbrake/watch:/watch
+      - ${NOOK_DATA}/apps/handbrake/config:/config
+    environment:
+      TZ: ${TZ:-UTC}
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}

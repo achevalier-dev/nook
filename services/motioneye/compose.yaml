@@ -1,0 +1,11 @@
+services:
+  motioneye:
+    image: ccrisan/motioneye:master-amd64
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:8765:8765"]
+    volumes:
+      - ${NOOK_DATA}/apps/motioneye/config:/etc/motioneye
+    environment:
+      TZ: ${TZ:-UTC}
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}

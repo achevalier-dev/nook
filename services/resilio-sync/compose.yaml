@@ -1,0 +1,12 @@
+services:
+  resilio-sync:
+    image: linuxserver/resilio-sync:3.1.2
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:8891:8888"]
+    volumes:
+      - ${NOOK_DATA}/apps/resilio-sync/data:/sync
+      - ${NOOK_DATA}/apps/resilio-sync/config:/config
+    environment:
+      TZ: ${TZ:-UTC}
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}

@@ -3,6 +3,12 @@ description: Something worth adding to the catalogue.
 title: "service: "
 labels: ["service"]
 body:
+  - type: markdown
+    attributes:
+      value: |
+        Check `services/catalogue.tsv` first — there are already a lot of these,
+        and the one you want may be in there under a name you did not expect.
+
   - type: input
     id: name
     attributes:
@@ -12,13 +18,19 @@ body:
     validations:
       required: true
 
-  - type: textarea
-    id: why
+  - type: dropdown
+    id: shape
     attributes:
-      label: Why it belongs here
+      label: What shape is it?
       description: >
-        The catalogue is deliberately short. What makes this one of the things
-        people actually put on a box in a cupboard?
+        One container with one data directory and one port is a line in
+        `services/catalogue.tsv` and nothing else. Anything with a database or a
+        stack of its own is hand-written and named in `KEEP` at the top of
+        `script/generate-services`, which is a bigger job.
+      options:
+        - One container, one data directory, one port
+        - It needs a database or other containers alongside it
+        - Not sure
     validations:
       required: true
 
@@ -26,10 +38,30 @@ body:
     id: arch
     attributes:
       label: Does it publish an arm64 image?
+      description: A Pi cannot run an x86-only image, and most boxes here are Pis.
       options:
         - "Yes"
         - "No — x86 boxes only"
         - "Not sure"
+    validations:
+      required: true
+
+  - type: input
+    id: library
+    attributes:
+      label: Does it want a library from the shared folder?
+      description: >
+        The convention is `media:/media`, `photos:/originals` and so on — a
+        directory of the shared folder mounted in, so `nook push` can feed it.
+      placeholder: "photos:/usr/src/app/upload, or none"
+
+  - type: textarea
+    id: why
+    attributes:
+      label: Why it belongs here
+      description: >
+        What makes this one of the things people actually put on a box in a
+        cupboard, rather than one more thing that could run in a container?
     validations:
       required: true
 
@@ -38,6 +70,6 @@ body:
     attributes:
       label: A compose file, if you have one running
       description: >
-        Data under `/mnt/nook/apps/<name>`, ports bound to the tailnet address
+        Data under `$NOOK_DATA/apps/<name>`, ports bound to the tailnet address
         rather than 0.0.0.0. A working one of these is most of the pull request.
       render: yaml

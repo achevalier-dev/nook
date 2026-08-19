@@ -1,0 +1,11 @@
+services:
+  myspeed:
+    image: germannewsmaker/myspeed:1.0.9
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:5216:5216"]
+    volumes:
+      - ${NOOK_DATA}/apps/myspeed/data:/myspeed/data
+    environment:
+      TZ: ${TZ:-UTC}
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}

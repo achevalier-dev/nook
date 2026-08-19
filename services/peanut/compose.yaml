@@ -1,0 +1,11 @@
+services:
+  peanut:
+    image: brandawg93/peanut:6.0.0
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:8086:8080"]
+    volumes:
+      - ${NOOK_DATA}/apps/peanut/config:/config
+    environment:
+      TZ: ${TZ:-UTC}
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}

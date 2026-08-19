@@ -1,0 +1,11 @@
+services:
+  mylar3:
+    image: linuxserver/mylar3:0.9.0
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:8094:8090"]
+    volumes:
+      - ${NOOK_DATA}/apps/mylar3/config:/config
+    environment:
+      TZ: ${TZ:-UTC}
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}

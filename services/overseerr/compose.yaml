@@ -1,0 +1,11 @@
+services:
+  overseerr:
+    image: linuxserver/overseerr:1.35.0
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:5056:5055"]
+    volumes:
+      - ${NOOK_DATA}/apps/overseerr/config:/config
+    environment:
+      TZ: ${TZ:-UTC}
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}

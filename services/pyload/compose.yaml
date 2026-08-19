@@ -1,0 +1,11 @@
+services:
+  pyload:
+    image: linuxserver/pyload-ng:0.5.0
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:8005:8000"]
+    volumes:
+      - ${NOOK_DATA}/apps/pyload/config:/config
+    environment:
+      TZ: ${TZ:-UTC}
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}

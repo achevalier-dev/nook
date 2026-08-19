@@ -1,0 +1,11 @@
+services:
+  ombi:
+    image: linuxserver/ombi:4.53.5
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:3579:3579"]
+    volumes:
+      - ${NOOK_DATA}/apps/ombi/config:/config
+    environment:
+      TZ: ${TZ:-UTC}
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}

@@ -1,0 +1,11 @@
+services:
+  alist:
+    image: xhofe/alist:v3.40.0
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:5244:5244"]
+    volumes:
+      - ${NOOK_DATA}/apps/alist/data:/opt/alist/data
+    environment:
+      TZ: ${TZ:-UTC}
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}

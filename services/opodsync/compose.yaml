@@ -1,0 +1,11 @@
+services:
+  opodsync:
+    image: ganeshlab/opodsync:latest
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:8089:8080"]
+    volumes:
+      - ${NOOK_DATA}/apps/opodsync/data:/var/www/server/data
+    environment:
+      TZ: ${TZ:-UTC}
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}

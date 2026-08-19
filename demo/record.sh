@@ -15,6 +15,11 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.."
 REAL=0
 [[ ${1:-} == --real ]] && REAL=1
 
+# Pushed to the box and deleted again afterwards; the name is what appears on
+# screen, so it says what somebody would actually be moving.
+DEMO_FILE=/tmp/nook-demo/holiday-2026.mkv
+DEMO_REMOTE=/mnt/nook/files/media/holiday-2026.mkv
+
 if ((REAL)); then
   RUN=(./bin/nook)
   export HOME=$HOME
@@ -30,17 +35,23 @@ fi
 # Each entry is either a command to show and run, or a hidden one that only
 # moves the demo's state along.
 if ((REAL)); then
+  # The arc is: the box, then the shared folder, then the drive, then health.
+  # The drive is the half nothing else does, so it gets three of the nine.
   SEQUENCE=(
-    "show:list"
     "show:status"
     "hide:umount"
     "show:mount"
-    "show:push /tmp/nook-demo-file.txt"
-    "show:vault list"
+    "show:push $DEMO_FILE media/"
+    "show:attach"
     "show:disk"
+    "show:eject"
+    "show:speedtest --last"
     "show:doctor"
   )
-  printf 'a file from the machine you are sitting at\n' >/tmp/nook-demo-file.txt
+  # Big enough that rsync reports a real rate — a 43-byte file measures nothing
+  # and prints 0.00kB/s, which reads as broken rather than fast.
+  mkdir -p "$(dirname "$DEMO_FILE")"
+  head -c 6000000 /dev/urandom >"$DEMO_FILE"
 else
   SEQUENCE=(
     "show:adopt pi"
@@ -65,7 +76,7 @@ sanitise() {
   sed -E \
     -e 's/.*\r//' \
     -e 's/100\.[0-9]+\.[0-9]+\.[0-9]+/100.x.y.z/g' \
-    -e "s#/home/$(id -un)#/home/you#g" \
+    -e "s/\b$(id -un)\b/you/g" \
     -e "s/\b$(hostname)\b/thismachine/g"
 }
 
@@ -94,6 +105,9 @@ done
 
 echo "]" >>"$out.tmp"
 jq . "$out.tmp" >"$out"
-rm -f "$out.tmp" /tmp/nook-demo-file.txt
+rm -f "$out.tmp"
+rm -rf /tmp/nook-demo
+# The recording is not a reason to leave a six-megabyte file on somebody's box.
+((REAL)) && ./bin/nook ssh rm -f "$DEMO_REMOTE" >/dev/null 2>&1 || true
 if ((REAL)); then source=" from a real nook"; else source=", staged"; fi
 echo "wrote $out ($(jq length "$out") commands$source)"

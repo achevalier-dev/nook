@@ -1,0 +1,11 @@
+services:
+  index-tts-nvidia:
+    image: icewhaletech/index-tts:2.0
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:7867:7860"]
+    volumes:
+      - ${NOOK_DATA}/apps/index-tts-nvidia:/config
+    environment:
+      TZ: ${TZ:-UTC}
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}

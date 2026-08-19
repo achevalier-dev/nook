@@ -1,0 +1,13 @@
+nook
+Copyright (c) 2026 Antoine Chevalier
+
+Part of the service catalogue is derived from the CasaOS App Store,
+https://github.com/IceWhaleTech/CasaOS-AppStore, licensed under the Apache
+License 2.0. What is taken from it is factual — the image, the port a thing
+listens on, and a one-line tagline — and every compose file in services/ is
+written by script/import-casaos rather than copied, because nook binds ports to
+a tailnet address and keeps data under $NOOK_DATA, neither of which that store
+does.
+
+Service icons are from https://github.com/homarr-labs/dashboard-icons, licensed
+under the MIT License.

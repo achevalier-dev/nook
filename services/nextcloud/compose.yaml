@@ -1,0 +1,11 @@
+services:
+  nextcloud:
+    image: nextcloud:33.0.3
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:10081:80"]
+    volumes:
+      - ${NOOK_DATA}/apps/nextcloud/var/www/html:/var/www/html
+    environment:
+      TZ: ${TZ:-UTC}
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}

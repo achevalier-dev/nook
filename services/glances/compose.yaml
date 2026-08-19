@@ -1,0 +1,11 @@
+services:
+  glances:
+    image: nicolargo/glances:4.5.4
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:61208:61208"]
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      TZ: ${TZ:-UTC}
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}

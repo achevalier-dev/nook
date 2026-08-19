@@ -1,0 +1,11 @@
+services:
+  obsidian:
+    image: lscr.io/linuxserver/obsidian:1.12.7
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:15324:3001"]
+    volumes:
+      - ${NOOK_DATA}/apps/obsidian/config:/config
+    environment:
+      TZ: ${TZ:-UTC}
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}

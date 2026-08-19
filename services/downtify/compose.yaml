@@ -1,0 +1,11 @@
+services:
+  downtify:
+    image: ghcr.io/henriquesebastiao/downtify:2.7.0
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:8582:8000"]
+    volumes:
+      - ${NOOK_DATA}/apps/downtify/data:/data
+    environment:
+      TZ: ${TZ:-UTC}
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}

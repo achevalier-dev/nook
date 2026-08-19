@@ -1,0 +1,11 @@
+services:
+  dsh:
+    image: ghcr.io/smanx/deepseek-harness:latest
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:3081:3080"]
+    volumes:
+      - ${NOOK_DATA}/apps/dsh-harness/data:/root/.dsh
+    environment:
+      TZ: ${TZ:-UTC}
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}

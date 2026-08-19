@@ -1,0 +1,11 @@
+services:
+  vocechat:
+    image: privoce/vocechat-server:v0.5.17
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:3009:3000"]
+    volumes:
+      - ${NOOK_DATA}/apps/vocechat/home/vocechat-server/data:/home/vocechat-server/data
+    environment:
+      TZ: ${TZ:-UTC}
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}

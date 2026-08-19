@@ -1,0 +1,14 @@
+services:
+  app:
+    image: netdata/netdata:v2.10.3
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:19999:19999"]
+    volumes:
+      - ${NOOK_DATA}/apps/netdata/config:/etc/netdata
+      - ${NOOK_DATA}/apps/netdata/lib:/var/lib/netdata
+      - ${NOOK_DATA}/apps/netdata/cache:/var/cache/netdata
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      TZ: ${TZ:-UTC}
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}

@@ -1,0 +1,11 @@
+services:
+  chatgpt-next-web:
+    image: yidadaa/chatgpt-next-web:v2.16.1
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:3000:3000"]
+    volumes:
+      - ${NOOK_DATA}/apps/chatgpt-next-web:/config
+    environment:
+      TZ: ${TZ:-UTC}
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}

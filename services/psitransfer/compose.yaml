@@ -1,0 +1,11 @@
+services:
+  psitransfer:
+    image: psitrax/psitransfer:v2.4.1
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:13001:3000"]
+    volumes:
+      - ${NOOK_DATA}/apps/psitransfer/data:/data
+    environment:
+      TZ: ${TZ:-UTC}
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}

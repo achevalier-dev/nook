@@ -1,0 +1,11 @@
+services:
+  grafana:
+    image: grafana/grafana:13.0.1-security-01
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:3003:3000"]
+    volumes:
+      - ${NOOK_DATA}/apps/grafana/data:/var/lib/grafana
+    environment:
+      TZ: ${TZ:-UTC}
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}

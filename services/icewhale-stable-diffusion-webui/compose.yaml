@@ -1,0 +1,13 @@
+services:
+  icewhale-stable-diffusion-webui:
+    image: johnguan/stable-diffusion-webui:latest
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:7860:7860"]
+    volumes:
+      - ${NOOK_DATA}/apps/icewhale-stable-diffusion-webui/models:/data/models
+      - ${NOOK_DATA}/apps/icewhale-stable-diffusion-webui/outputs:/data/outputs
+      - ${NOOK_DATA}/apps/icewhale-stable-diffusion-webui/config:/data/config
+    environment:
+      TZ: ${TZ:-UTC}
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}

@@ -1,11 +1,17 @@
 #!/usr/bin/env python3
-"""Draw demo/transcript.json as an animated terminal and hand the frames to ffmpeg.
+"""Draw demo/transcript.json as an animated terminal and write the GIF and MP4.
 
 The transcript is produced by demo/record.sh from the real cmd_ functions, so
 nothing here invents output — this file only decides how it looks and how fast
 it types.
 
     ./demo/record.sh && ./demo/render.py
+
+Two things keep the GIF small enough to sit at the top of a README. The canvas
+is measured from the transcript rather than fixed, so it is exactly as wide as
+the longest line and as tall as the tallest command, and the screen clears
+between commands rather than scrolling — a scroll moves every pixel on every
+frame, which defeats the frame-to-frame differencing the format is built on.
 """
 
 import json
@@ -15,7 +21,7 @@ import subprocess
 import sys
 import tempfile
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageChops, ImageDraw, ImageFont
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 TRANSCRIPT = ROOT / "demo" / "transcript.json"
@@ -24,25 +30,28 @@ OUT_MP4 = ROOT / "demo" / "nook.mp4"
 
 FONT = "/usr/share/fonts/TTF/JetBrainsMonoNerdFont-Regular.ttf"
 FONT_SIZE = 17
-COLS, ROWS = 84, 28
 PAD = 26
 CHROME = 34
-FPS = 16
+MIN_COLS = 52
 
 BG = "#11121a"
 PANEL = "#1a1b26"
 BORDER = "#252634"
 FG = "#c0caf5"
 DIM = "#565f89"
-BLUE = "#7aa2f7"
 GREEN = "#9ece6a"
 RED = "#f7768e"
 CYAN = "#7dcfff"
 
+# One tick is one animation frame. 60ms is the coarsest step GIF timing keeps
+# exactly, and it is fast enough that typing reads as typing.
+TICK_MS = 60
 # How long a finished command stays on screen before the next one starts.
-HOLD_FRAMES = 14
-# Frames per typed character. Long commands get compressed rather than dragging.
-TYPE_FRAMES = 1
+HOLD_MS = 1100
+# The beat between the command landing and its first line of output.
+BEAT_MS = 260
+# A longer pause on the last screen, so a loop does not snap.
+END_MS = 1800
 
 GOOD_PREFIXES = ("adopted", "mounted", "attached", "ejected", "formatted", "unmounted")
 
@@ -72,21 +81,6 @@ def colour_for(line: str) -> str:
     return FG
 
 
-class Screen:
-    """A rolling window of rendered lines, one entry per terminal row."""
-
-    def __init__(self):
-        self.lines: list[tuple[str, str]] = []
-
-    def add(self, text: str, colour: str = FG):
-        for chunk in (text or "").split("\n"):
-            self.lines.append((chunk, colour))
-        del self.lines[: max(0, len(self.lines) - ROWS)]
-
-    def replace_last(self, text: str, colour: str = FG):
-        self.lines[-1] = (text, colour)
-
-
 def load_font():
     try:
         return ImageFont.truetype(FONT, FONT_SIZE)
@@ -94,17 +88,30 @@ def load_font():
         sys.exit(f"font not found: {FONT}")
 
 
+def measure(entries):
+    """The canvas is the longest line and the tallest command, not a guess."""
+    cols = MIN_COLS
+    rows = 1
+    for entry in entries:
+        lines = entry["output"].split("\n")
+        cols = max(cols, len(entry["command"]) + 2, *(len(line) for line in lines))
+        rows = max(rows, 1 + len(lines))
+    return cols + 1, rows + 1
+
+
 def main():
     font = load_font()
+    entries = json.loads(TRANSCRIPT.read_text())
+    cols, rows = measure(entries)
+
     probe = ImageDraw.Draw(Image.new("RGB", (1, 1)))
     cw = probe.textlength("M", font=font)
     lh = FONT_SIZE + 7
-    width = int(cw * COLS) + PAD * 2
-    height = int(lh * ROWS) + PAD * 2 + CHROME
+    width = int(cw * cols) + PAD * 2
+    height = int(lh * rows) + PAD * 2 + CHROME
 
-    entries = json.loads(TRANSCRIPT.read_text())
-    screen = Screen()
-    frames: list[Image.Image] = []
+    screen: list[tuple[str, str]] = []
+    frames: list[tuple[Image.Image, int]] = []
 
     def draw() -> Image.Image:
         img = Image.new("RGB", (width, height), BG)
@@ -117,7 +124,7 @@ def main():
         d.text((width / 2, 25), "nook", font=font, fill=DIM, anchor="mm")
 
         y = PAD + CHROME
-        for text, colour in screen.lines:
+        for text, colour in screen:
             parts = split_label(text)
             if parts and colour is FG:
                 label, rest = parts
@@ -128,52 +135,83 @@ def main():
             y += lh
         return img
 
-    def hold(n: int):
-        frames.extend([draw()] * n)
+    def emit(ms: int = TICK_MS):
+        """One frame, or more time on the frame already there if it is identical."""
+        img = draw()
+        if frames and ImageChops.difference(frames[-1][0], img).getbbox() is None:
+            frames[-1] = (frames[-1][0], frames[-1][1] + ms)
+            return
+        frames.append((img, ms))
 
     for entry in entries:
         command = entry["command"]
-        screen.add("", FG)  # the line the prompt types into
+        screen.clear()
+        screen.append(("", FG))
         step = max(1, len(command) // 40)  # long commands type in bigger bites
         for i in range(0, len(command) + 1, step):
-            screen.replace_last(f"❯ {command[:i]}", CYAN)
-            frames.extend([draw()] * TYPE_FRAMES)
-        screen.replace_last(f"❯ {command}", CYAN)
-        hold(4)
+            screen[-1] = (f"❯ {command[:i]}", CYAN)
+            emit()
+        screen[-1] = (f"❯ {command}", CYAN)
+        emit(BEAT_MS)
 
         for line in entry["output"].split("\n"):
-            screen.add(line, colour_for(line))
-            frames.append(draw())
-        screen.add("")
-        hold(HOLD_FRAMES)
+            screen.append((line, colour_for(line)))
+            emit()
+        emit(HOLD_MS)
 
-    hold(FPS)  # a beat on the last screen before it loops
+    frames[-1] = (frames[-1][0], frames[-1][1] + END_MS)
 
+    write_gif(frames)
+    write_mp4(frames, width, height)
+
+    print(f"{OUT_GIF.relative_to(ROOT)}  {OUT_GIF.stat().st_size // 1024}K, "
+          f"{len(frames)} frames, {sum(ms for _, ms in frames) / 1000:.1f}s, "
+          f"{width}×{height}")
+    print(f"{OUT_MP4.relative_to(ROOT)}  {OUT_MP4.stat().st_size // 1024}K")
+
+
+def write_gif(frames):
+    # Every frame is quantised against one palette taken from the busiest frame,
+    # because Pillow can only store a frame as a difference from the one before
+    # it when the two agree on their colours. The panel is a dozen near-identical
+    # dark blues and 64 is plenty for flat terminal text.
+    busiest = max(frames, key=lambda f: ImageChops.difference(
+        f[0], Image.new("RGB", f[0].size, BG)).getbbox()[3])[0]
+    master = busiest.quantize(colors=64, method=Image.MEDIANCUT)
+    quantised = [f.quantize(palette=master, dither=Image.NONE) for f, _ in frames]
+
+    quantised[0].save(
+        OUT_GIF,
+        save_all=True,
+        append_images=quantised[1:],
+        duration=[ms for _, ms in frames],
+        loop=0,
+        optimize=True,
+        disposal=1,
+    )
+
+
+def write_mp4(frames, width, height):
     tmp = pathlib.Path(tempfile.mkdtemp())
     try:
-        for i, frame in enumerate(frames):
-            frame.save(tmp / f"f{i:05d}.png")
-        pattern = str(tmp / "f%05d.png")
-        palette = tmp / "palette.png"
+        # ffmpeg's concat demuxer takes a duration per still, so the MP4 gets the
+        # same timing as the GIF without writing one PNG per tick.
+        listing = []
+        for i, (frame, ms) in enumerate(frames):
+            path = tmp / f"f{i:05d}.png"
+            frame.save(path)
+            listing.append(f"file '{path}'\nduration {ms / 1000:.3f}")
+        listing.append(f"file '{tmp}/f{len(frames) - 1:05d}.png'")
+        concat = tmp / "concat.txt"
+        concat.write_text("\n".join(listing) + "\n")
 
-        # A generated palette rather than ffmpeg's default: the panel is a dozen
-        # near-identical dark blues and the stock palette bands them badly. 64
-        # colours is plenty for flat terminal text and roughly halves the file.
-        run(["ffmpeg", "-y", "-framerate", str(FPS), "-i", pattern,
-             "-vf", "palettegen=max_colors=64:stats_mode=diff", str(palette)])
-        run(["ffmpeg", "-y", "-framerate", str(FPS), "-i", pattern, "-i", str(palette),
-             "-lavfi", "paletteuse=dither=bayer:bayer_scale=3", str(OUT_GIF)])
-        # yuv420p refuses an odd width, and the panel width falls out of the
-        # font metrics rather than being chosen.
-        run(["ffmpeg", "-y", "-framerate", str(FPS), "-i", pattern,
-             "-vf", "pad=ceil(iw/2)*2:ceil(ih/2)*2",
+        # yuv420p refuses an odd width, and the panel size falls out of the font
+        # metrics rather than being chosen.
+        run(["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(concat),
+             "-vf", "fps=30,pad=ceil(iw/2)*2:ceil(ih/2)*2",
              "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "20", str(OUT_MP4)])
     finally:
         shutil.rmtree(tmp)
-
-    print(f"{OUT_GIF.relative_to(ROOT)}  {OUT_GIF.stat().st_size // 1024}K, "
-          f"{len(frames)} frames at {FPS}fps")
-    print(f"{OUT_MP4.relative_to(ROOT)}  {OUT_MP4.stat().st_size // 1024}K")
 
 
 def run(cmd):

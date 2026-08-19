@@ -1,0 +1,12 @@
+services:
+  hugo:
+    image: ghcr.io/gohugoio/hugo:v0.161.1
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:1313:1313"]
+    volumes:
+      - ${NOOK_DATA}/apps/hugo/project:/project
+      - ${NOOK_DATA}/apps/hugo/cache:/cache
+    environment:
+      TZ: ${TZ:-UTC}
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}

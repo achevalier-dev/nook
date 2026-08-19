@@ -1,0 +1,11 @@
+services:
+  beaverhabittracker:
+    image: daya0576/beaverhabits:0.9.1
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:15580:8080"]
+    volumes:
+      - ${NOOK_DATA}/apps/beaverhabittracker/:/app/.user
+    environment:
+      TZ: ${TZ:-UTC}
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}

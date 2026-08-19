@@ -1,0 +1,11 @@
+services:
+  gateway-go:
+    image: openiothub/gateway-go:v2.0.12
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:34323:34323"]
+    volumes:
+      - ${NOOK_DATA}/apps/gateway-go/config:/root
+    environment:
+      TZ: ${TZ:-UTC}
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}

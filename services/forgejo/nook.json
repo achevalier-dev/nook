@@ -1,1 +1,8 @@
-{"name": "forgejo", "summary": "A community fork of Gitea, if you prefer it", "port": 3031, "category": "dev", "repo": "https://codeberg.org/forgejo/forgejo", "stars": 5331}
+{
+  "name": "forgejo",
+  "summary": "A community fork of Gitea, if you prefer it",
+  "port": 3031,
+  "category": "dev",
+  "repo": "https://github.com/forgejo/forgejo",
+  "stars": 5331
+}

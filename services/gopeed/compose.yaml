@@ -1,0 +1,11 @@
+services:
+  gopeed:
+    image: liwei2633/gopeed:v1.9.3
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:9999:9999"]
+    volumes:
+      - ${NOOK_DATA}/apps/gopeed/data:/app/storage
+    environment:
+      TZ: ${TZ:-UTC}
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}

@@ -1,0 +1,11 @@
+services:
+  chatbot-ui:
+    image: ghcr.io/mckaywrigley/chatbot-ui:main
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:3080:3000"]
+    volumes:
+      - ${NOOK_DATA}/apps/chatbot-ui:/config
+    environment:
+      TZ: ${TZ:-UTC}
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}

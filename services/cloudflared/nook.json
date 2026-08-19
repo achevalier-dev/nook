@@ -1,0 +1,1 @@
+{"name": "cloudflared", "summary": "Tunneling daemon by Cloudflare that safely exposes your web servers into the internet", "port": 14333, "category": "tools", "repo": "https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/get-started/create-remote-tunnel/"}

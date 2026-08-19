@@ -1,0 +1,12 @@
+services:
+  pingvin-share:
+    image: stonith404/pingvin-share
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:3410:3000"]
+    volumes:
+      - ${NOOK_DATA}/apps/pingvin-share/data:/opt/app/backend/data
+      - ${NOOK_DATA}/apps/pingvin-share/images:/opt/app/frontend/public/img
+    environment:
+      TZ: ${TZ:-UTC}
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}

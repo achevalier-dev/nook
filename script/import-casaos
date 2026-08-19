@@ -1,0 +1,201 @@
+#!/usr/bin/env python3
+"""Derive catalogue entries from the CasaOS app store.
+
+Hand-writing a catalogue stops scaling somewhere around fifty. This reads a
+store that already exists — one that ships real compose files, so it knows the
+one fact no metadata API publishes: which port each thing actually listens on —
+and rewrites each app into nook's conventions.
+
+CasaOS-AppStore is Apache-2.0; see NOTICE. Only facts and the one-line tagline
+are taken, and every compose file is written from scratch here rather than
+copied, because their layout puts data in /DATA/AppData and binds every port on
+every interface, which are exactly the two things nook does differently.
+
+    ./script/import-casaos /tmp/casax --write
+"""
+
+import json
+import pathlib
+import re
+import sys
+
+import yaml
+
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+SERVICES = ROOT / "services"
+
+# Written by hand, or already curated: an import never touches these.
+KEEP = {
+    "home", "jellyfin", "audiobookshelf", "navidrome", "paperless", "vaultwarden",
+    "home-assistant", "n8n", "actual", "uptime-kuma", "dockge",
+}
+
+# CasaOS' categories are theirs; these are ours.
+CATEGORY = {
+    "media": "media", "Media": "media", "Entertainment": "media",
+    "downloader": "downloads", "Downloader": "downloads",
+    "network": "network", "Network": "network", "VPN": "network",
+    "utilities": "tools", "Utilities": "tools", "Tools": "tools",
+    "developer": "dev", "Developer": "dev",
+    "backup": "files", "Backup": "files", "Storage": "files", "storage": "files",
+    "automation": "home", "Automation": "home", "HomeAutomation": "home",
+    "productivity": "documents", "Productivity": "documents", "Office": "documents",
+    "monitoring": "monitoring", "Monitoring": "monitoring",
+}
+
+
+def clean(text, limit=88):
+    """One line, no marketing, no trailing full stop."""
+    text = re.sub(r"\s+", " ", (text or "")).strip()
+    text = re.sub(r"^(?:[A-Za-z0-9.-]+ is |An? )", "", text)
+    text = text.rstrip(".")
+    if len(text) > limit:
+        text = text[:limit].rsplit(" ", 1)[0] + "…"
+    return text[:1].upper() + text[1:] if text else ""
+
+
+def pick_url(meta):
+    """The upstream project, from whichever field this app happens to use."""
+    for key in ("project_url", "index", "website"):
+        v = meta.get(key)
+        if isinstance(v, str) and v.startswith("http"):
+            return v
+    dev = meta.get("developer")
+    if isinstance(dev, dict):
+        for v in dev.values():
+            if isinstance(v, str) and v.startswith("http"):
+                return v
+    return None
+
+
+def main(store, write):
+    apps = sorted((pathlib.Path(store)).glob("*/Apps/*/docker-compose.yml"))
+    if not apps:
+        sys.exit(f"no apps under {store}")
+
+    taken, images = set(), set()
+    for d in SERVICES.iterdir():
+        m, c = d / "nook.json", d / "compose.yaml"
+        if m.is_file():
+            port = json.loads(m.read_text()).get("port")
+            if port:
+                taken.add(int(port))
+        if c.is_file():
+            for line in c.read_text().splitlines():
+                if line.strip().startswith("image:"):
+                    images.add(line.split("image:", 1)[1].strip().split(":")[0])
+
+    rows, skipped = [], {"multi": 0, "noport": 0, "kept": 0, "notagline": 0, "clash": 0, "dupe": 0}
+
+    for f in apps:
+        try:
+            doc = yaml.safe_load(f.read_text())
+        except Exception:
+            continue
+        name = (doc.get("name") or f.parent.name).lower()
+        if name in KEEP or (SERVICES / name).exists():
+            skipped["kept"] += 1
+            continue
+
+        svcs = doc.get("services") or {}
+        if len(svcs) != 1:
+            skipped["multi"] += 1
+            continue
+        key, svc = next(iter(svcs.items()))
+
+        meta = doc.get("x-casaos") or {}
+        tagline = (meta.get("tagline") or {}).get("en_US") or ""
+        summary = clean(tagline)
+        if len(summary) < 12:
+            skipped["notagline"] += 1
+            continue
+
+        if (svc.get("image") or "").split(":")[0] in images:
+            skipped["dupe"] += 1
+            continue
+
+        # x-casaos names the web interface's port; the first entry in `ports` is
+        # whatever happened to be listed first, which for a DNS server is 53 —
+        # and binding 53 on the box takes its own resolver down.
+        wanted = meta.get("port_map")
+        host = inside = None
+        for p in svc.get("ports") or []:
+            if not isinstance(p, dict) or str(p.get("protocol", "tcp")) != "tcp":
+                continue
+            pub, tgt = int(str(p.get("published"))), int(p.get("target"))
+            if wanted and str(pub) != str(wanted):
+                continue
+            host, inside = pub, tgt
+            break
+        if not host or host < 1024:
+            skipped["noport"] += 1
+            continue
+        while host in taken:
+            host += 1
+        if host > 65000:
+            skipped["clash"] += 1
+            continue
+        taken.add(host)
+
+        # Their layout is /DATA/AppData/$AppID/x and /DATA; ours is
+        # $NOOK_DATA/apps/<name>/x and the shared folder.
+        vols = []
+        for v in svc.get("volumes") or []:
+            src = v.get("source") if isinstance(v, dict) else str(v).split(":")[0]
+            tgt = v.get("target") if isinstance(v, dict) else str(v).split(":")[1]
+            if not src or not tgt:
+                continue
+            if "/AppData/" in src:
+                tail = src.split("/AppData/", 1)[1].split("/", 1)
+                sub = tail[1] if len(tail) > 1 else "data"
+                vols.append((f"${{NOOK_DATA}}/apps/{name}/{sub}", tgt))
+            elif src.rstrip("/") == "/DATA":
+                vols.append(("${NOOK_DATA}/files", tgt))
+            elif src.startswith("/var/run/docker.sock"):
+                vols.append(("/var/run/docker.sock", tgt + ":ro"))
+        if not vols:
+            vols = [(f"${{NOOK_DATA}}/apps/{name}", "/config")]
+
+        rows.append({
+            "name": name, "service": key, "image": svc.get("image"),
+            "host": host, "inside": inside, "summary": summary,
+            "category": CATEGORY.get(str(meta.get("category", "")), "tools"),
+            "repo": pick_url(meta),
+            "icon": meta.get("icon") or None,
+            "volumes": vols,
+        })
+
+    print(f"{len(rows)} importable  " + "  ".join(f"{k}:{v}" for k, v in skipped.items()))
+    if not write:
+        for r in rows[:5]:
+            print(" ", r["name"], r["host"], r["image"], "—", r["summary"])
+        return
+
+    for r in rows:
+        d = SERVICES / r["name"]
+        d.mkdir(exist_ok=True)
+        lines = [
+            "services:",
+            f"  {r['service']}:",
+            f"    image: {r['image']}",
+            "    restart: unless-stopped",
+            f'    ports: ["${{NOOK_TS_IP}}:{r["host"]}:{r["inside"]}"]',
+            "    volumes:",
+        ]
+        lines += [f"      - {src}:{tgt}" for src, tgt in r["volumes"]]
+        lines += ["    environment:", "      TZ: ${TZ:-UTC}",
+                  "      PUID: ${PUID:-1000}", "      PGID: ${PGID:-1000}", ""]
+        (d / "compose.yaml").write_text("\n".join(lines))
+
+        manifest = {"name": r["name"], "summary": r["summary"],
+                    "port": r["host"], "category": r["category"]}
+        if r["repo"]:
+            manifest["repo"] = r["repo"]
+        (d / "nook.json").write_text(json.dumps(manifest) + "\n")
+
+    print(f"wrote {len(rows)} services")
+
+
+if __name__ == "__main__":
+    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    main(args[0] if args else "/tmp/casax", "--write" in sys.argv)

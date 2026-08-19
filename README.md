@@ -260,6 +260,21 @@ nook uninstall jellyfin  # stops it; its data stays
 | `n8n` | wires services together |
 | `actual` | envelope budgeting |
 
+…and about 130 more. `nook services` lists them; the catalogue overlay on the
+index page is the better way to look.
+
+Most of them are not hand-written. `services/catalogue.tsv` is a curated seed
+rendered by `script/generate-services`, and `script/import-casaos` derives the
+rest from the [CasaOS app store](https://github.com/IceWhaleTech/CasaOS-AppStore)
+— which is the one place that publishes the fact no metadata API does: the port
+each thing actually listens on. Every compose file is written by those scripts
+rather than copied, because nook binds ports to a tailnet address and keeps data
+under `$NOOK_DATA`, and neither of those is how that store does it. See
+[NOTICE](NOTICE).
+
+`script/enrich-services` adds the repository, its star count and an icon, all
+baked in at build time so the box never calls GitHub to render a page.
+
 Two conventions hold it together. Data lives in `/mnt/nook/apps/<name>`, so a
 box is backed up by copying one directory. A library lives in the **shared
 folder** — `nook push ~/Films/thing.mkv media/` and Jellyfin has it, drop a PDF

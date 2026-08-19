@@ -1,30 +1,34 @@
 [
   {
-    "command": "nook list",
-    "output": "* nook             nook                     nbd"
-  },
-  {
     "command": "nook status",
-    "output": "nook       nook  ·  up 1 hour, 45 minutes\nload       0.25   temp 51.6°C\ndisk       71G used of 114G  ·  37G free\ncontainers 0 running\ndrive      nbd, free\nfolder     mounted at /home/you/nook/nook"
+    "output": "nook       nook  ·  up 6 hours, 32 minutes\nload       0.20   temp 58.4°C\ndisk       75G used of 114G  ·  34G free\ncontainers 4 running\ndrive      nbd, attached by 1\nfolder     mounted at /home/you/nook/nook"
   },
   {
     "command": "nook mount",
     "output": "mounted at /home/you/nook/nook"
   },
   {
-    "command": "nook push /tmp/nook-demo-file.txt",
-    "output": "             43 100%    0.00kB/s    0:00:00 (xfr#1, to-chk=0/1)"
+    "command": "nook push /tmp/nook-demo/holiday-2026.mkv media/",
+    "output": "      6,000,000 100%    6.62MB/s    0:00:00 (xfr#1, to-chk=0/1)"
   },
   {
-    "command": "nook vault list",
-    "output": "main"
+    "command": "nook attach",
+    "output": "already attached at /dev/nbd0"
   },
   {
     "command": "nook disk",
-    "output": "disk       not attached (nbd)\ntransport   nbd\nimage       /mnt/nook/disk.img (38G allocated 39G)\nexport      nook\nportal      100.x.y.z:10809\nattached    none"
+    "output": ""
+  },
+  {
+    "command": "nook eject",
+    "output": ""
+  },
+  {
+    "command": "nook speedtest --last",
+    "output": "down       91.31 Mbps\nup         40.83 Mbps\nlatency    21.0 ms\nmeasured   2026-08-19T19:04:16+02:00"
   },
   {
     "command": "nook doctor",
-    "output": "tailscale     online, 100.x.y.z\nssh           ok\ntransport     nbd\nnbd           missing — install nbd\nsshfs         installed\ndocker        context nook-nook\ndrive         not attached here"
+    "output": "tailscale     online, 100.x.y.z\nssh           ok\ntransport     nbd\nnbd           installed\nsshfs         installed\ndocker        context nook-nook\ndrive         /dev/nbd0\ncli           7ee64c6, updates daily, modified here"
   }
 ]

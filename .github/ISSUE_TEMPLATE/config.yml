@@ -1,8 +1,11 @@
 blank_issues_enabled: true
 contact_links:
-  - name: Something did not work and you are not sure it is a bug
+  - name: A question rather than a bug
+    url: https://github.com/achevalier-dev/nook/discussions
+    about: Anything that starts "how do I" or "is it meant to" — discussions, not issues.
+  - name: The install did not go the way the README said
     url: https://github.com/achevalier-dev/nook/blob/main/README.md#install
-    about: The install section covers the two one-liners and which one runs where.
+    about: There are two one-liners and they run on different machines. That section says which is which.
   - name: The Omarchy bar widget and menu rows
     url: https://github.com/achevalier-dev/omarchy-nook/issues
     about: They live in a separate repository. File there.

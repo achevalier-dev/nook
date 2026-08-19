@@ -1,0 +1,11 @@
+services:
+  filedrop:
+    image: noecl/filedrop:1.0.1
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:8003:8000"]
+    volumes:
+      - ${NOOK_DATA}/apps/filedrop/data:/var/file_drop_files
+    environment:
+      TZ: ${TZ:-UTC}
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}

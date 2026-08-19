@@ -1,0 +1,11 @@
+services:
+  openclaw:
+    image: icewhaletech/openclaw:2026.5.7
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:24190:18789"]
+    volumes:
+      - ${NOOK_DATA}/apps/openclaw/data:/home/node/.openclaw
+    environment:
+      TZ: ${TZ:-UTC}
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}

@@ -1,0 +1,12 @@
+services:
+  pdfding:
+    image: mrmn/pdfding:v1.7.2
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:8004:8000"]
+    volumes:
+      - ${NOOK_DATA}/apps/pdfding/db:/home/nonroot/pdfding/db
+      - ${NOOK_DATA}/apps/pdfding/media:/home/nonroot/pdfding/media
+    environment:
+      TZ: ${TZ:-UTC}
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}

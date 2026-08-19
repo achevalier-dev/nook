@@ -1,0 +1,11 @@
+services:
+  nzbget:
+    image: linuxserver/nzbget:26.1.20260522
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:6789:6789"]
+    volumes:
+      - ${NOOK_DATA}/apps/nzbget/config:/config
+    environment:
+      TZ: ${TZ:-UTC}
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}

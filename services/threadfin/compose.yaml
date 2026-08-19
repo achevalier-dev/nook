@@ -1,0 +1,12 @@
+services:
+  threadfin:
+    image: fyb3roptik/threadfin:1.2.37
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:34400:34400"]
+    volumes:
+      - ${NOOK_DATA}/apps/threadfin/config:/home/threadfin/conf/data
+      - ${NOOK_DATA}/apps/threadfin/backup:/home/threadfin/conf/backup
+    environment:
+      TZ: ${TZ:-UTC}
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}

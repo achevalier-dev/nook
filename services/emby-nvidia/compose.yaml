@@ -1,0 +1,11 @@
+services:
+  emby:
+    image: linuxserver/emby:4.9.1
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:8098:8096"]
+    volumes:
+      - ${NOOK_DATA}/apps/emby-nvidia/config:/config
+    environment:
+      TZ: ${TZ:-UTC}
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}

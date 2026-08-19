@@ -1,0 +1,11 @@
+services:
+  anythingllm:
+    image: mintplexlabs/anythingllm
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:3051:3001"]
+    volumes:
+      - ${NOOK_DATA}/apps/anythingllm/storage:/app/server/storage
+    environment:
+      TZ: ${TZ:-UTC}
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}

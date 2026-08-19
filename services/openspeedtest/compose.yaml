@@ -1,0 +1,11 @@
+services:
+  openspeedtest:
+    image: openspeedtest/latest:v2.0.6
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:3005:3000"]
+    volumes:
+      - ${NOOK_DATA}/apps/openspeedtest:/config
+    environment:
+      TZ: ${TZ:-UTC}
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}

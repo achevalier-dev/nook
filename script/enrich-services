@@ -40,6 +40,35 @@ while IFS=$'\t' read -r name repo icon; do
   rm -f "$dir/icon.svg.tmp"
 done < services/sources.tsv
 
+# Imported entries already carry a repo from the store they came from; anything
+# on GitHub can have its stars counted the same way, and an icon is worth
+# trying for by name.
+for dir in services/*/; do
+  name=$(basename "$dir")
+  [[ -f $dir/nook.json ]] || continue
+
+  if command -v gh >/dev/null && ! jq -e '.stars' "$dir/nook.json" >/dev/null 2>&1; then
+    repo=$(jq -r '.repo // ""' "$dir/nook.json")
+    if [[ $repo == https://github.com/* ]]; then
+      slug=${repo#https://github.com/}
+      slug=${slug%%/}
+      count=$(gh api "repos/$slug" --jq .stargazers_count 2>/dev/null || echo "")
+      if [[ $count =~ ^[0-9]+$ ]]; then
+        tmp=$(mktemp)
+        jq --argjson stars "$count" '. + {stars: $stars}' "$dir/nook.json" >"$tmp" &&
+          mv "$tmp" "$dir/nook.json"
+        stars=$((stars + 1))
+      fi
+    fi
+  fi
+
+  if [[ ! -f $dir/icon.svg ]] && curl -fsSL --max-time 15 "$ICONS/$name.svg" -o "$dir/icon.svg.tmp" 2>/dev/null; then
+    mv "$dir/icon.svg.tmp" "$dir/icon.svg"
+    icons=$((icons + 1))
+  fi
+  rm -f "$dir/icon.svg.tmp"
+done
+
 echo "stars on $stars services, $icons icons fetched"
 ((${#missing[@]})) && echo "in sources.tsv but not generated: ${missing[*]}" >&2
 exit 0

@@ -1,0 +1,11 @@
+services:
+  pocketbase:
+    image: argonptg/pocketbase:0.26.6
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:8101:8090"]
+    volumes:
+      - ${NOOK_DATA}/apps/pocketbase/pb_data:/pb_data
+    environment:
+      TZ: ${TZ:-UTC}
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}

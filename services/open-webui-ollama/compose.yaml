@@ -1,0 +1,12 @@
+services:
+  open-webui-ollama:
+    image: ghcr.io/open-webui/open-webui:ollama
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:3050:8080"]
+    volumes:
+      - ${NOOK_DATA}/apps/open-webui-ollama/open-webui:/app/backend/data
+      - ${NOOK_DATA}/apps/open-webui-ollama/ollama:/root/.ollama
+    environment:
+      TZ: ${TZ:-UTC}
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}

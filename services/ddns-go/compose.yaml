@@ -1,0 +1,11 @@
+services:
+  ddns-go:
+    image: jeessy/ddns-go:v6.17.1
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:9876:9876"]
+    volumes:
+      - ${NOOK_DATA}/apps/ddns-go/config:/root
+    environment:
+      TZ: ${TZ:-UTC}
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}

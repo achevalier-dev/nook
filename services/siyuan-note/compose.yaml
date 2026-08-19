@@ -1,0 +1,11 @@
+services:
+  siyuan-note:
+    image: b3log/siyuan:v3.6.5
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:6806:6806"]
+    volumes:
+      - ${NOOK_DATA}/apps/siyuan-note/workspace:/siyuan/workspace
+    environment:
+      TZ: ${TZ:-UTC}
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}
