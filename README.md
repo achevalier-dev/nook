@@ -359,11 +359,36 @@ nook install <name>    deploy one; nook uninstall <name> stops it
 nook serve             https names on your tailnet, with a real certificate
 nook open [service]    open it, so there is no address to remember
 nook upgrade           newer images; --box, --auto, --no-auto
+nook speedtest         measure the box's link; --last, --auto, --no-auto
 nook up / down / ps / logs
 nook vault init [name] a bare git repo for an Obsidian vault
 nook ssh
 nook help --all        every command
 ```
+
+## Measuring the link
+
+```bash
+nook speedtest              # measure now, about half a minute
+nook speedtest --last       # what it measured last time
+nook speedtest --auto       # every six hours, on the box
+```
+
+The measurement runs on the **box**, because what matters is what the nook can
+reach — a laptop on the same wifi would be measuring its own link. Two more
+dials appear on the index page once there is a reading, and not before: an empty
+gauge for a measurement nobody has taken is worse than no gauge. The dial scale
+latches upward through 25/50/100/250/500/1000, so a slow line and a fast one do
+not have to share a face.
+
+It uses Cloudflare's endpoints over plain `curl` rather than `speedtest-cli`:
+curl is already required by everything else here, and a measurement that needs a
+package installed is one that fails on a box somebody trimmed.
+
+Automatic measurement is off by default — it is the one reading that costs real
+bandwidth to take, and a box on a metered connection should not be doing it four
+times a day because nobody said otherwise. `--speedtest` at boot, or
+`nook speedtest --auto` later, turns it on.
 
 `nook update` pulls the checkout the command runs from — bootstrap puts it in
 `~/.local/share/nook` — and re-links it, so a fix does not mean remembering

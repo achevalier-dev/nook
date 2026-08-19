@@ -161,7 +161,8 @@
   #add li:hover .nm { color: var(--ink); }
   .working { color: var(--amber); }
 
-  footer { margin-top: 2.5rem; color: var(--faint); font-size: .72rem; display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+  footer { margin-top: 2.5rem; color: var(--faint); font-size: .72rem; display: flex; justify-content: space-between; gap: 1rem 1.5rem; flex-wrap: wrap; }
+  footer #link:empty { display: none; }
   footer a { color: var(--dim); text-decoration: none; border-bottom: 1px solid var(--rule); }
   footer a:hover { color: var(--amber); }
   @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
@@ -201,7 +202,7 @@
 
   <footer>
     <span>kept by <a href="https://github.com/achevalier-dev/nook">nook</a></span>
-    <span id="stamp">reading…</span>
+    <span id="link"></span><span id="stamp">reading…</span>
   </footer>
 </main>
 
@@ -223,7 +224,7 @@
   // bloom behind the value arc and the hubless needle.
   const TICKS = 46;
 
-  document.querySelectorAll('.g').forEach((g, gi) => {
+  function buildDial(g, gi) {
     const redline = parseFloat(g.dataset.redline);
     let ticks = '';
     for (let i = 0; i < TICKS; i++) {
@@ -256,7 +257,9 @@
          <path class="needle" d="M48.8 34.5 L49.55 20.8 L50.45 20.8 L51.2 34.5 Z"
                fill="url(#n${gi})" transform="rotate(225 50 50)"/>
        </svg>`);
-  });
+  }
+
+  document.querySelectorAll('.g').forEach(buildDial);
 
   // A needle is a mass on a spring against a hairspring, and that is how this
   // one moves: position integrated every frame from a spring pulling toward a
@@ -270,7 +273,7 @@
   const state = new Map();
   let ignited = false, raf = 0, last = 0;
 
-  for (const g of gauges) {
+  function register(g) {
     state.set(g, {
       x: 0, v: 0, target: 0, hot: false,
       // No two of them are the same mechanism, so no two settle identically.
@@ -279,6 +282,7 @@
       needle: g.querySelector('.needle'),
     });
   }
+  gauges.forEach(register);
 
   function paint(s) {
     const v = Math.max(0, Math.min(1, s.x));
@@ -370,6 +374,41 @@
     return (v >= 10 ? Math.round(v) : v.toFixed(1)) + u[i];
   };
 
+  // ── link ───────────────────────────────────────────────────────────────
+  // The scale latches upward: a 40 Mbps line and a 900 Mbps line cannot share a
+  // dial face, and picking the smallest that fits keeps the needle in the part
+  // of the sweep where it can be read.
+  const STOPS = [25, 50, 100, 250, 500, 1000, 2500];
+  let linkAdded = false;
+
+  function addLinkDials() {
+    if (linkAdded) return;
+    linkAdded = true;
+    for (const [key, label] of [['down', 'down'], ['up', 'up']]) {
+      const el = document.createElement('div');
+      el.className = 'g';
+      el.dataset.gauge = key;
+      el.dataset.redline = '1';
+      el.innerHTML = `<div class="dial"><div class="read"><span>—</span><small>Mb/s</small></div></div><div class="lbl">${label}</div>`;
+      document.getElementById('cluster').appendChild(el);
+      buildDial(el, document.querySelectorAll('.g').length - 1);
+      register(el);
+    }
+  }
+
+  async function readLink() {
+    try {
+      const s = await (await fetch('speedtest.json?t=' + Date.now(), { cache: 'no-store' })).json();
+      if (!(s.down > 0 || s.up > 0)) return;
+      addLinkDials();
+      const top = STOPS.find(v => Math.max(s.down, s.up) <= v * .92) || STOPS[STOPS.length - 1];
+      set('down', s.down / top, s.down.toFixed(s.down < 100 ? 1 : 0));
+      set('up', s.up / top, s.up.toFixed(s.up < 100 ? 1 : 0));
+      const when = new Date(s.at);
+      $('link').textContent = `link measured ${when.toLocaleDateString()} · ${s.latency} ms`;
+    } catch { /* never measured, or the box is not answering */ }
+  }
+
   async function read() {
     try {
       const s = await (await fetch('status.json?t=' + Date.now(), { cache: 'no-store' })).json();
@@ -402,7 +441,9 @@
     }
   }
   read();
+  readLink();
   setInterval(read, 20000);
+  setInterval(readLink, 300000);
   // Coming back to a tab should not show a minute-old temperature.
   document.addEventListener('visibilitychange', () => !document.hidden && read());
 

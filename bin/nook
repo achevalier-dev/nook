@@ -38,6 +38,7 @@ nook — your Raspberry Pi, from here
   nook install <name>       put one on the box — jellyfin, paperless, …
   nook serve                give them https names on your tailnet
   nook open [service]       open one in a browser, no address to remember
+  nook speedtest            measure the box's link, and show it on the page
   nook up [dir]             docker compose up -d, running over there
   nook push <src> [dest]    rsync into the shared folder
   nook vault init [name]    a bare git repo for an Obsidian vault
@@ -59,6 +60,8 @@ Setup
   nook upgrade [--services]             newer images, restarting only what changed
   nook upgrade --box                    re-run the boot script over there
   nook upgrade --auto | --no-auto       weekly, on the box, by itself
+  nook speedtest [--last]               measure the box's link, or read the last
+  nook speedtest --auto | --no-auto     measure it every six hours
   nook version                          which version is installed
 
 More than one box
@@ -125,6 +128,10 @@ case $cmd in
   upgrade)
     source "$ROOT/lib/upgrade.sh"
     cmd_upgrade "$@"
+    ;;
+  speedtest)
+    source "$ROOT/lib/speedtest.sh"
+    cmd_speedtest "$@"
     ;;
   adopt | boot)
     source "$ROOT/lib/adopt.sh"

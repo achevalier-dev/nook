@@ -33,11 +33,12 @@ NOOK_SHARES=${NOOK_SHARES:-0}
 NOOK_USB_GADGET=${NOOK_USB_GADGET:-0}
 NOOK_DETACH=${NOOK_DETACH:-0}
 NOOK_AUTO_UPGRADE=${NOOK_AUTO_UPGRADE:-1}
+NOOK_SPEEDTEST=${NOOK_SPEEDTEST:-0}
 NOOK_MANAGE=${NOOK_MANAGE:-1}
 NOOK_API_PORT=${NOOK_API_PORT:-8881}
 SKIP=()
 
-MODULES=(10-base 20-tailscale 30-storage 35-disk 40-docker 45-status 50-shares 55-api 60-usb-gadget 70-upgrade)
+MODULES=(10-base 20-tailscale 30-storage 35-disk 40-docker 45-status 50-shares 55-api 60-usb-gadget 70-upgrade 75-speedtest)
 
 # Kept whole, because the loop below consumes $@ and the sudo re-exec further
 # down still has to pass the flags on. Without this, `--format` is parsed here
@@ -55,6 +56,7 @@ nook boot
   --shares          also run Samba, for phones and non-Linux machines
   --usb-gadget      also offer the disk over a USB-C cable (read the warning)
   --no-auto-upgrade do not upgrade services weekly on their own
+  --speedtest       measure the link every six hours, not just on demand
   --no-manage       index page lists services but cannot add or remove them
   --detach          run in the background, surviving a dropped connection
   --no-detach       stay in the foreground even on a fragile session
@@ -72,6 +74,7 @@ while [[ $# -gt 0 ]]; do
   --shares) NOOK_SHARES=1; shift ;;
   --usb-gadget) NOOK_USB_GADGET=1; shift ;;
   --no-auto-upgrade) NOOK_AUTO_UPGRADE=0; shift ;;
+  --speedtest) NOOK_SPEEDTEST=1; shift ;;
   --no-manage) NOOK_MANAGE=0; shift ;;
   --detach) NOOK_DETACH=1; shift ;;
   --no-detach) NOOK_DETACH=0; NOOK_DETACHED=1; shift ;;

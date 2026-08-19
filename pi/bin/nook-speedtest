@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+# nook-speedtest — measure this box's link and write the result where the index
+# page can read it.
+#
+# Cloudflare's endpoints rather than speedtest-cli: curl is already required by
+# everything else here, and a measurement that needs a package installed is a
+# measurement that fails on a box somebody trimmed.
+
+set -euo pipefail
+
+# shellcheck disable=SC1091
+. /etc/nook.conf
+
+OUT=$NOOK_DATA/www/speedtest.json
+DOWN_BYTES=${NOOK_SPEEDTEST_DOWN:-26214400}   # 25 MiB
+UP_BYTES=${NOOK_SPEEDTEST_UP:-8388608}        # 8 MiB
+BASE=${NOOK_SPEEDTEST_URL:-https://speed.cloudflare.com}
+
+mbps() { awk -v b="$1" 'BEGIN { printf "%.2f", b * 8 / 1000000 }'; }
+
+# curl reports the transfer rate itself, which is the honest number: it excludes
+# connection setup, so a slow handshake does not read as a slow link.
+down=$(curl -fsS -o /dev/null -w '%{speed_download}' --max-time 60 \
+  "$BASE/__down?bytes=$DOWN_BYTES" 2>/dev/null) || down=0
+
+up=$(head -c "$UP_BYTES" /dev/zero |
+  curl -fsS -o /dev/null -w '%{speed_upload}' --max-time 60 \
+    -H 'Content-Type: application/octet-stream' --data-binary @- \
+    "$BASE/__up" 2>/dev/null) || up=0
+
+# A zero-byte body: all that is being timed is the round trip.
+latency=$(curl -fsS -o /dev/null -w '%{time_connect}' --max-time 15 \
+  "$BASE/__down?bytes=0" 2>/dev/null) || latency=0
+
+mkdir -p "$(dirname "$OUT")"
+jq -nc \
+  --argjson down "$(mbps "$down")" \
+  --argjson up "$(mbps "$up")" \
+  --argjson latency "$(awk -v s="$latency" 'BEGIN { printf "%.1f", s * 1000 }')" \
+  --arg at "$(date -Is)" \
+  '{down: $down, up: $up, latency: $latency, at: $at}' >"$OUT.tmp"
+mv "$OUT.tmp" "$OUT"
+
+[[ ${1:-} == --quiet ]] || cat "$OUT"
