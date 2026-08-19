@@ -4,6 +4,7 @@
 #
 # Needs lib/drive.sh sourced alongside it for disk_device.
 
+# shellcheck disable=SC2120  # bin/nook passes --json and --all through
 cmd_status() {
   # Every nook, one after another. A subshell per box so the globals load_config
   # sets for one do not leak into the next.
@@ -56,6 +57,7 @@ cmd_status() {
 
 # Prints every check even when an early one fails: "ssh is down" and "sshfs is
 # missing" are different problems and the second is worth knowing about now.
+# shellcheck disable=SC2120  # bin/nook passes --all through
 cmd_doctor() {
   if [[ ${1:-} == --all ]]; then
     local name first=1

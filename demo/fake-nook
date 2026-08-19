@@ -16,7 +16,7 @@ ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 DEMO_STATE=${DEMO_STATE:-${TMPDIR:-/tmp}/nook-demo}
 NOOK_HOME="$DEMO_STATE/home"
 export NOOK_HOME DEMO_STATE
-builtin command mkdir -p "$NOOK_HOME"
+mkdir -p "$NOOK_HOME"
 
 source "$ROOT/lib/common.sh"
 
@@ -240,7 +240,7 @@ case $cmd in
     demo_overrides
     "cmd_$cmd" "$@"
     ;;
-  reset) builtin command rm -rf "$DEMO_STATE"; builtin command mkdir -p "$NOOK_HOME" ;;
+  reset) builtin command rm -rf "$DEMO_STATE"; mkdir -p "$NOOK_HOME" ;;
   # Pretend another machine took a drive, so the recording can show the guard
   # that matters most doing its job.
   hold) set_state "held.${1:-pi}" yes ;;

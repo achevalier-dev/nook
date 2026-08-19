@@ -22,17 +22,21 @@ syntax() {
 # One file at a time, and without --external-sources: every lib carries a
 # `shellcheck shell=bash` directive, and following sources from the dispatcher
 # makes shellcheck walk the same libraries once per case arm.
+# Pinned, and preferred over whatever is installed: shellcheck findings differ
+# between versions, so an unpinned lint pass means CI and a laptop disagree
+# about whether the same code is clean. Docker first for exactly that reason.
+SHELLCHECK_IMAGE=${SHELLCHECK_IMAGE:-koalaman/shellcheck-alpine:v0.11.0}
+
 lint() {
   local runner=()
-  if command -v shellcheck >/dev/null; then
+  if command -v docker >/dev/null && docker info >/dev/null 2>&1; then
+    runner=(docker run --rm -v "$PWD:/mnt" -w /mnt "$SHELLCHECK_IMAGE" shellcheck)
+  elif command -v shellcheck >/dev/null; then
+    echo "note: using the shellcheck on PATH ($(shellcheck --version | awk '/version:/ {print $2}'))," >&2
+    echo "      not the pinned $SHELLCHECK_IMAGE — findings may differ" >&2
     runner=(shellcheck)
-  elif command -v docker >/dev/null && docker info >/dev/null 2>&1; then
-    # Nothing on this machine has to be installed for CI's own check to be
-    # runnable here — which is the difference between finding a lint failure
-    # now and finding it after pushing.
-    runner=(docker run --rm -v "$PWD:/mnt" -w /mnt koalaman/shellcheck-alpine:stable shellcheck)
   else
-    echo "no shellcheck and no docker — skipping the lint pass (CI will run it)" >&2
+    echo "no docker and no shellcheck — skipping the lint pass" >&2
     return 0
   fi
 

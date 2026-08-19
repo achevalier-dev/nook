@@ -18,8 +18,10 @@ jobs:
       - name: bash -n every script
         run: ./script/check --syntax-only
 
+      # Through the same pinned container the repository uses locally, so a
+      # clean run on a laptop means a clean run here.
       - name: shellcheck
-        run: shellcheck --version && ./script/check --lint-only
+        run: ./script/check --lint-only
 
   behaviour:
     name: manifests and invariants
