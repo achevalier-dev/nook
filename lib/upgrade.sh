@@ -51,6 +51,19 @@ cmd_upgrade() {
 # setup. It is idempotent by design, so this is safe to do whenever.
 upgrade_box() {
   local url=${NOOK_BOOT_URL:-https://raw.githubusercontent.com/achevalier-dev/nook/main/pi/boot.sh}
+
+  # A checkout on this machine wins over the published copy. GitHub's raw CDN
+  # caches for minutes, so "I just pushed the fix" and "the box has the fix" are
+  # otherwise two different times.
+  if [[ -d $ROOT/pi/modules ]] && command -v rsync >/dev/null; then
+    log "re-running the boot script on $NOOK, from this checkout"
+    rsync -a --delete "$ROOT/pi/" "$NOOK_HOST:/tmp/nook-boot/"
+    ssh -t "$NOOK_HOST" "sudo bash /tmp/nook-boot/boot.sh"
+    echo
+    echo "re-adopt if its transport or paths changed:  nook adopt"
+    return 0
+  fi
+
   log "re-running the boot script on $NOOK"
   ssh -t "$NOOK_HOST" "curl -fsSL $url | bash"
   echo
