@@ -26,10 +26,18 @@ the environment beats the default, and it is easy to leave exported in a shell.
 whole machine. Eject another nook's drive, or raise the pool with
 `sudo modprobe nbd nbds_max=32`.
 
-**`cannot ssh to <host>`** — check `tailscale status` on both ends. If the peer
-is listed and online but SSH still fails, the stale control socket is the usual
-culprit: `rm ~/.ssh/nook-*` and retry. MagicDNS being off in the tailnet means
-the hostname does not resolve at all; `20-tailscale` warns about this at boot.
+**`cannot reach <host>`** — `nook adopt` separates the four causes itself and
+prints the one that applies: Tailscale not installed here, this machine not
+signed in, no peer by that name in the tailnet, or the peer online but not
+answering SSH. Take it at its word before digging.
+
+The most common is the second, because installing Tailscale is not the same as
+signing in to it: `sudo tailscale up`, same account as the box.
+
+If the peer is listed, online, and SSH still fails, a stale control socket is
+the usual culprit: `rm ~/.ssh/nook-*` and retry. MagicDNS being off in the
+tailnet means the hostname does not resolve at all; `20-tailscale` warns about
+this at boot.
 
 **`ls ~/nook` hangs** — a stale sshfs mount after a suspend.
 

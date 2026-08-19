@@ -89,9 +89,20 @@ work first.
 curl -fsSL https://raw.githubusercontent.com/achevalier-dev/nook/main/bootstrap.sh | bash
 ```
 
-Installs `ssh`, `jq`, `rsync`, `sshfs` and `udisks2` if they are missing, clones
-nook to `~/.local/share/nook`, links `nook` onto your `PATH`, and installs the
-Claude Code skill.
+Installs `ssh`, `jq`, `rsync`, `sshfs`, `udisks2` and Tailscale if they are
+missing, clones nook to `~/.local/share/nook`, links `nook` onto your `PATH`,
+and installs the Claude Code skill.
+
+Your machine has to be on the **same tailnet as the box** — that is the whole
+network. Installing Tailscale is not the same as being signed in to it, so if
+the bootstrap says you are not on one yet:
+
+```bash
+sudo tailscale up
+```
+
+Same account as the box. `nook adopt` tells you which end is at fault if this
+gets missed.
 
 ### 3. Pair them
 

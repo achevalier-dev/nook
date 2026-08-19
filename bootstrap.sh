@@ -59,13 +59,14 @@ dim "package manager: $MGR"
 # ---------------------------------------------------------------- dependencies
 
 missing=()
-for tool in git ssh jq rsync sshfs udisksctl; do
+for tool in git ssh jq rsync sshfs udisksctl tailscale; do
   command -v "$tool" >/dev/null || missing+=("$tool")
 done
 
 pkg_name() {
   case "$MGR:$1" in
     pacman:ssh) echo openssh ;;
+    apt:tailscale | dnf:tailscale) echo "" ;;
     apt:ssh | dnf:ssh) echo openssh-client ;;
     *:udisksctl) echo udisks2 ;;
     *) echo "$1" ;;
@@ -73,8 +74,17 @@ pkg_name() {
 }
 
 install_missing() {
-  local pkgs=() t
-  for t in "${missing[@]}"; do pkgs+=("$(pkg_name "$t")"); done
+  local pkgs=() t name
+  for t in "${missing[@]}"; do
+    name=$(pkg_name "$t")
+    # Debian and Fedora do not carry tailscale; its own installer adds the
+    # repository and is the documented way in.
+    if [[ -z $name ]]; then
+      run bash -c "curl -fsSL https://tailscale.com/install.sh | sh"
+      continue
+    fi
+    pkgs+=("$name")
+  done
   [[ ${#pkgs[@]} -gt 0 ]] || return 0
   case $MGR in
     pacman) run $SUDO pacman -S --needed --noconfirm "${pkgs[@]}" ;;
@@ -89,6 +99,27 @@ if [[ ${#missing[@]} -gt 0 ]]; then
   if [[ $DEPS == 1 ]]; then install_missing; else dim "skipped (--no-deps)"; fi
 else
   step "Dependencies already present"
+fi
+
+# Reaching a nook at all means being on the same tailnet as it. Installing the
+# package is only half of that — the machine still has to be signed in, and
+# nothing else here can do it for you.
+step "Tailscale"
+if command -v tailscale >/dev/null; then
+  if [[ $DRY == 0 ]] && ! command -v systemctl >/dev/null; then
+    warn "no systemd here — start tailscaled however this machine does it"
+  elif [[ $DRY == 0 ]]; then
+    systemctl is-active --quiet tailscaled 2>/dev/null || run $SUDO systemctl enable --now tailscaled
+  fi
+  if [[ $DRY == 0 ]] && tailscale status --json 2>/dev/null | grep -q '"BackendState": *"Running"'; then
+    dim "signed in as $(tailscale status --json 2>/dev/null | jq -r '.Self.DNSName // ""' | sed 's/\.$//')"
+  else
+    warn "this machine is not on a tailnet yet. Sign in with the same account as the box:"
+    warn "  sudo tailscale up"
+  fi
+else
+  warn "tailscale could not be installed — nook reaches boxes over it:"
+  warn "  https://tailscale.com/download"
 fi
 
 # The block-device client depends on what the nook's kernel could offer, which

@@ -24,8 +24,9 @@ cmd_adopt() {
   migrate_single_nook
 
   log "reaching $host"
-  ssh -o BatchMode=yes -o ConnectTimeout=10 "$host" true ||
-    die "cannot ssh to $host — is it on the tailnet, and is MagicDNS on?"
+  if ! ssh -o BatchMode=yes -o ConnectTimeout=10 "$host" true; then
+    unreachable "$host"
+  fi
 
   local conf
   conf=$(ssh "$host" cat /etc/nook.conf) ||
@@ -79,6 +80,41 @@ EOF
   if [[ -n $others ]]; then
     echo "  nook use $name   — commands go to $(default_nook) until you do"
   fi
+}
+
+# "cannot ssh" has three quite different causes and only one of them is the box.
+# Naming the right one is the difference between a five-second fix and an hour.
+unreachable() {
+  local host=$1 state=""
+  echo "nook: cannot reach $host" >&2
+
+  if ! command -v tailscale >/dev/null; then
+    echo "  tailscale is not installed here, and that is how nook reaches a box." >&2
+    echo "  https://tailscale.com/download" >&2
+    exit 1
+  fi
+
+  state=$(tailscale status --json 2>/dev/null | jq -r '.BackendState // "Unknown"')
+  if [[ $state != Running ]]; then
+    echo "  this machine is not on a tailnet (tailscale says: $state)." >&2
+    echo "  Sign in with the same account as the box:  sudo tailscale up" >&2
+    exit 1
+  fi
+
+  if ! tailscale status --json | jq -e --arg h "$host" '.Peer[]? | select(.HostName == $h)' >/dev/null; then
+    echo "  no machine called \"$host\" is in this tailnet." >&2
+    echo "  Check the name in the Tailscale admin console, or that the box finished its boot script." >&2
+    exit 1
+  fi
+
+  if ! tailscale status --json | jq -e --arg h "$host" '.Peer[]? | select(.HostName == $h and .Online)' >/dev/null; then
+    echo "  $host is in the tailnet but offline. Is it powered on?" >&2
+    exit 1
+  fi
+
+  echo "  $host is online but not answering SSH." >&2
+  echo "  The box needs 'tailscale up --ssh', which its boot script does — did that run finish?" >&2
+  exit 1
 }
 
 # `nook adopt` with no argument re-reads the current default's config, which is
