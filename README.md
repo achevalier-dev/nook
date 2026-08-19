@@ -8,9 +8,9 @@ network, with no cable.
 Bash, `ssh`, `rsync` and the kernel's own block-device client. No daemon, no
 database, no agent running on your laptop.
 
-The bar widget and menu rows for [Omarchy](https://omarchy.org) are a separate
-repository, [omarchy-nook](https://github.com/achevalier-dev/omarchy-nook). This
-one is the CLI and the Pi.
+A bar widget and menu rows for [Omarchy](https://omarchy.org) live in a separate
+repository, [omarchy-nook](https://github.com/achevalier-dev/omarchy-nook), and
+are entirely optional — everything here works from a terminal.
 
 ![adopting a nook, mounting it, attaching the drive, and being refused](demo/nook.gif)
 
@@ -19,49 +19,105 @@ the SSH connection, the block device and the mount table, and nothing else — s
 every line on screen is printed by the same `cmd_` functions a real nook runs.
 `demo/record.sh` captures what they print and `demo/render.py` draws it.*
 
-## Two one-liners, and which is which
+## How it fits together
 
-| Where you run it | What it does |
-|---|---|
-| **on the box** — `pi/boot.sh` | turns a Pi or mini PC *into* a nook: Tailscale, the external disk, Docker, the drive export |
-| **on your machine** — `bootstrap.sh` | installs the `nook` command you drive it with |
+Two machines, two different pieces of software. **The box** is the Pi or mini PC
+in the cupboard. **Your machine** is the laptop you actually sit at.
 
-Both, in that order. `bootstrap.sh` says so if you run it on a Raspberry Pi.
+```
+   your machine                                    the box — a "nook"
+   ────────────                                    ──────────────────
+   nook mount   ──── SFTP ──────────────────▶      /mnt/nook/files
+                                                   shared, many machines at once
 
-## Getting there
+   nook attach  ──── iSCSI or NBD ──────────▶      /mnt/nook/disk.img
+                                                   a real drive, one machine at a time
 
-Here, once:
+   nook up      ──── docker over ssh ───────▶      containers
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/achevalier-dev/nook/main/bootstrap.sh | bash
+                  all of it over Tailscale
 ```
 
-On the box, once:
+There are two install one-liners and they are easy to mix up, so:
+
+| Run it on | Script | What it does |
+|---|---|---|
+| **the box** | `pi/boot.sh` | turns that box *into* a nook — Tailscale, the external disk, Docker, the drive export |
+| **your machine** | `bootstrap.sh` | installs the `nook` command you drive it with |
+
+Both, in that order. If you run `bootstrap.sh` on a Raspberry Pi it tells you so.
+
+## Install
+
+### 1. On the box
+
+Raspberry Pi OS Lite, Debian, Ubuntu — anything apt-based, x86 or ARM. Plug in
+the external disk first.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/achevalier-dev/nook/main/pi/boot.sh | bash
 ```
 
 It prints a link and a QR code. Open it on a device already signed in to
-Tailscale and the pairing is done — there is no key to generate, copy, or paste
-back. `--ssh` goes up with it, so SSH authenticates by tailnet identity and no
-keys are created or authorised anywhere either.
+Tailscale, and the pairing is done — no key to generate, copy or paste back.
+`--ssh` goes up with it, so from then on SSH authenticates by tailnet identity
+and no SSH keys are created or authorised anywhere either.
 
-Then, back here:
+Two flags worth knowing on the first run:
 
 ```bash
-nook adopt raspberrypi.local
+… | bash -s -- --name pi --format
 ```
 
-Or do both from here, if the box already has SSH:
+- `--name` is the box's identity. It becomes the hostname, the Tailscale name,
+  and what every `nook` command calls it. Give each box its own.
+- `--format` makes a filesystem on the external disk. **Without it nothing is
+  erased** — a disk nook does not recognise is left alone and skipped, which is
+  the right default when that disk might hold somebody's photos.
+
+Re-running the whole thing later is the upgrade path; every step checks its own
+work first.
+
+> On a box you are driving through **Raspberry Pi Connect**, boot.sh moves
+> itself into a background systemd unit — the services it restarts include the
+> one carrying your session. Follow it with `journalctl -fu nook-boot`;
+> Tailscale's login link appears there rather than in your terminal.
+
+### 2. On your machine
 
 ```bash
-nook boot raspberrypi.local -- --format
+curl -fsSL https://raw.githubusercontent.com/achevalier-dev/nook/main/bootstrap.sh | bash
+```
+
+Installs `ssh`, `jq`, `rsync`, `sshfs` and `udisks2` if they are missing, clones
+nook to `~/.local/share/nook`, links `nook` onto your `PATH`, and installs the
+Claude Code skill.
+
+### 3. Pair them
+
+```bash
+nook adopt pi
 ```
 
 `adopt` reads the box's `/etc/nook.conf`, writes an SSH block with a persistent
 control socket, points a Docker context at it, enables the mount unit, and adds
-`~/nook` to the file manager sidebar.
+`~/nook` to the file manager sidebar. Run it again any time the box changes.
+
+Then:
+
+```bash
+nook status     # is it up, how is it doing
+nook mount      # its files at ~/nook/pi
+nook attach     # its drive, as a real disk
+nook doctor     # when something is off, this says what
+```
+
+If the box already had SSH before any of this, steps 1 and 3 collapse into one
+command from your machine:
+
+```bash
+nook boot pi.local -- --name pi --format
+```
 
 ## More than one box
 
@@ -191,9 +247,11 @@ directory, which is how a throwaway experiment stays out of the real one.
 On the box, `nook-target` manages the export and `nook-info` prints the JSON
 `nook status` reads.
 
-## The boot script
+## The boot script, in full
 
-Re-running it is the upgrade path — every module checks its own work first.
+[Install](#1-on-the-box) covers the two flags that matter on a first run. The
+rest, for when you need them — and re-running the script is the upgrade path,
+since every step checks its own work first.
 
 ```
 --name NAME       hostname, Tailscale name, and the nook's identity (default: nook)
@@ -207,14 +265,6 @@ Re-running it is the upgrade path — every module checks its own work first.
 --no-detach       stay in the foreground even on a fragile session
 ```
 
-On a box reached through Raspberry Pi Connect, boot.sh detaches itself: the
-services it restarts include the one carrying your session, and a run that dies
-halfway leaves apt half-finished. Follow it with `journalctl -fu nook-boot` —
-Tailscale's login link appears there.
-
-Give each box its own `--name`: it becomes the hostname, the Tailscale name and
-the name every `nook` command refers to it by.
-
 Nothing is formatted without `--format`: an unpartitioned USB disk is far more
 likely to hold somebody's photos than to be blank. The external disk goes into
 `/etc/fstab` by UUID with `nofail`, because a headless box that drops to
@@ -225,6 +275,26 @@ for.
 network at all. It exports **read-only** on purpose: the host caches the
 filesystem and assumes exclusive ownership, so the image can only ever be live
 on one side.
+
+## When something is off
+
+`nook doctor` checks every moving part — the tailnet peer, SSH, which transport
+the box uses, whether the client for it is installed here, and whether the drive
+is attached. `nook doctor --all` does it for every box. Start there.
+
+The three things that bite on a first run:
+
+- **`dpkg was interrupted`** — a package install on that box was cut short
+  before nook ever ran. boot.sh finishes it itself now; if it cannot, run
+  `sudo dpkg --configure -a` and start again.
+- **`ls ~/nook/<name>` hangs** — a stale sshfs mount after a suspend.
+  `nook umount && nook mount`.
+- **`another machine has the drive attached`** — that is the guard working, not
+  a bug. The drive is a block device and only one machine may hold it. Eject it
+  there, or use the shared folder, which has no such limit.
+
+The Claude Code skill's [troubleshooting guide](skills/nook/troubleshooting.md)
+goes symptom by symptom.
 
 ## Claude Code
 
