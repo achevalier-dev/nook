@@ -561,6 +561,14 @@ two lanes, the single-writer rule, which transport your Pi ended up with, and
 what `nook doctor` is telling you — and reaches for the CLI rather than raw
 `iscsiadm` and `nbd-client`.
 
+![Claude refusing to attach the drive on two machines at once, checking the box first and pointing at the shared folder instead](demo/skill.gif)
+
+*One real session, recorded the same way as the recording above:
+`demo/record-skill.sh` runs it with the skill installed and
+`demo/render-skill.py` draws what came back. The question is the one that
+matters, and the answer is the skill's, not a script's — which is also why it
+is worth re-recording when the skill changes.*
+
 ```
 skills/nook/
 ├── SKILL.md            the model, the safety rules, where everything lives
@@ -587,7 +595,8 @@ systemd/ udev/     the mount unit and the rule that makes the drive removable
 
 ```bash
 ./script/check     # syntax, shellcheck, json, five behaviour tests — no box needed
-./demo/record.sh && ./demo/render.py   # rebuild the recording above
+./demo/record.sh && ./demo/render.py             # rebuild the recording above
+./demo/record-skill.sh && ./demo/render-skill.py # and the Claude Code one
 ```
 
 `demo/fake-nook` is worth knowing about beyond the GIF: it runs the real

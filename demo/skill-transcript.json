@@ -1,0 +1,22 @@
+[
+  {
+    "role": "user",
+    "text": "can I attach the nook drive on this machine and on my desktop at the same time, so both can write to it?"
+  },
+  {
+    "tool": "Skill",
+    "arg": "nook"
+  },
+  {
+    "tool": "Bash",
+    "arg": "sed -n 1,120p \"/home/you/.claude/skills/nook/drive.md\""
+  },
+  {
+    "tool": "Bash",
+    "arg": "nook list 2>&1; echo '---'; nook disk 2>&1 | head -20"
+  },
+  {
+    "role": "assistant",
+    "text": "No — and `nook attach` will refuse to let you.\n\nThe network drive is a raw block device. Whichever machine attaches it puts an ext4 filesystem on top and assumes it owns the disk exclusively — it caches metadata and never learns about writes coming from anywhere else. Two machines attached read-write corrupts the image, and the damage shows up long after the mistake. `nook attach` asks the Pi who holds the drive first and stops if the answer isn't \"nobody\".\n\nRight now nothing holds it:\n\n```\ndisk    not attached (nbd)\nexport  nook @ 100.x.y.z:10809\nattached none\n```\n\nSo you can attach here, but then you'd need `nook eject` before the desktop can take it.\n\n**What you actually want is the shared folder.** `/mnt/nook/files` over SFTP is safe for many machines at once — that's the whole reason there are two lanes:\n\n```bash\nnook mount        # ~/nook/nook, on both machines\n```\n\nBoth can read and write concurrently, and containers on the Pi see the same files. Use the network drive only when you specifically want USB-stick behaviour on one machine at a time."
+  }
+]
