@@ -16,7 +16,6 @@ ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 DEMO_STATE=${DEMO_STATE:-${TMPDIR:-/tmp}/nook-demo}
 NOOK_HOME="$DEMO_STATE/home"
 export NOOK_HOME DEMO_STATE
-mkdir -p "$NOOK_HOME"
 
 source "$ROOT/lib/common.sh"
 
@@ -200,6 +199,10 @@ command() {
   fi
   builtin command "$@"
 }
+
+# After the overrides, not before: the mkdir below is the stubbed one, which
+# creates real directories inside the demo's own state and nothing anywhere else.
+mkdir -p "$NOOK_HOME"
 
 cmd=${1:?usage: fake-nook <command> [args…]}
 shift
