@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Puts the demo harness where the bar widget looks for the CLI, so a recording
+# can be made on a machine with no Raspberry Pi attached to it.
+#
+# Only ever placed on PATH deliberately, for the length of a recording.
+# A fixed state directory, so the widget and the terminal see one session.
+export DEMO_STATE="${DEMO_STATE:-$HOME/.cache/nook-demo}"
+exec "$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")/fake-nook" "$@"

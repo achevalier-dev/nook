@@ -11,6 +11,13 @@ The bar widget and menu rows for [Omarchy](https://omarchy.org) are a separate
 repository, [omarchy-nook](https://github.com/achevalier-dev/omarchy-nook). This
 one is the CLI and the Pi.
 
+![adopting a nook, mounting it, attaching the drive, and being refused](demo/nook.gif)
+
+*Staged: there is no Raspberry Pi in that recording. `demo/fake-nook` replaces
+the SSH connection, the block device and the mount table, and nothing else — so
+every line on screen is printed by the same `cmd_` functions a real nook runs.
+`demo/record.sh` captures what they print and `demo/render.py` draws it.*
+
 ## Getting there
 
 On the Pi, once:
@@ -201,7 +208,12 @@ systemd/ udev/     the mount unit and the rule that makes the drive removable
 
 ```bash
 ./script/check     # syntax, shellcheck, json, four behaviour tests — no Pi needed
+./demo/record.sh && ./demo/render.py   # rebuild the recording above
 ```
+
+`demo/fake-nook` is worth knowing about beyond the GIF: it runs the real
+subcommands with only the Pi-facing calls replaced, which makes it the fastest
+way to see what a change prints without a nook in front of you.
 
 See [AGENTS.md](AGENTS.md) for the shell rules, and
 [CONTRIBUTING.md](CONTRIBUTING.md) before a pull request.

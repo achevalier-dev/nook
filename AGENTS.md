@@ -10,6 +10,7 @@ needs a new runtime, it probably needs a different design.
 
 ```
 bin/nook           dispatcher — flag parsing lives in the subcommands, not here
+demo/              the recording harness: real cmd_ functions, stubbed Pi
 lib/common.sh      paths, config, die/log/need/notify, the reused SSH connection
 lib/<topic>.sh     one file per area, exporting cmd_<name> functions
 pi/boot.sh         the one-liner that turns a Pi into a nook
@@ -60,6 +61,12 @@ NOOK_HOME=/tmp/nook-test ./bin/nook status
 `script/check` is everything CI runs and needs no Pi, no network and no
 credentials: the behaviour tests stub `remote`, `sudo` and the block device.
 Run it after every edit.
+
+`demo/fake-nook` runs the real subcommands with only the SSH connection, the
+block device and the mount table replaced, and keeps state between calls. It is
+the fastest way to see what a change prints, and it is what produces the GIF in
+the README — so a change to any command's output should be followed by
+`./demo/record.sh && ./demo/render.py`.
 
 Beyond that, test against a real nook with `NOOK_HOME` pointed somewhere
 disposable. Anything destructive — `format`, `resize` — gets stubbed rather than

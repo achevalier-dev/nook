@@ -4,7 +4,8 @@ set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
-SCRIPTS=(bin/nook install.sh script/check pi/boot.sh pi/bin/nook-target pi/bin/nook-info)
+SCRIPTS=(bin/nook install.sh script/check demo/fake-nook demo/record.sh
+  pi/boot.sh pi/bin/nook-target pi/bin/nook-info)
 while IFS= read -r f; do SCRIPTS+=("$f"); done < <(
   find lib pi/modules test -name '*.sh' -type f | sort
 )
