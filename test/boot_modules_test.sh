@@ -34,6 +34,16 @@ for f in pi/modules/*.sh pi/boot.sh; do
   }
 done
 
+# The drive, Samba and USB gadget are optional. A box without them is still
+# worth adopting, so none of them may end the run — /etc/nook.conf is written
+# last, and a box that never gets one cannot be adopted at all.
+for f in pi/modules/35-disk.sh pi/modules/50-shares.sh pi/modules/60-usb-gadget.sh; do
+  grep -nE '^\s*return [1-9]' "$f" && {
+    echo "$f can end the whole run — an optional module must return 0" >&2
+    bad=1
+  }
+done
+
 # A Pi runs unattended-upgrades on first boot, so any apt call that does not
 # wait for the lock is a coin flip on a freshly imaged card.
 while IFS= read -r line; do

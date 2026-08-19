@@ -7,6 +7,64 @@
 
 BOOT_URL=${NOOK_BOOT_URL:-https://raw.githubusercontent.com/achevalier-dev/nook/main/pi/boot.sh}
 
+# Accounts a box is likely to have, in the order worth trying. The local name
+# first — on a box you set up yourself it is usually the same one — then the
+# defaults the common images ship with.
+adopt_candidate_users() {
+  printf '%s\n' "$(id -un)" admin pi ubuntu debian root | awk '!seen[$0]++'
+}
+
+# A Tailscale peer has already been authenticated by the tailnet: WireGuard keys
+# and device identity, checked before a packet moves. Trusting the SSH host key
+# on first contact adds nothing to that and removes the one question a script
+# cannot answer for you. Anywhere else, ssh asks in the usual way.
+adopt_ssh_opts() {
+  local host=$1
+  printf '%s\n' -o ConnectTimeout=8 -o BatchMode=yes
+  if tailnet_peer "$host" >/dev/null 2>&1; then
+    printf '%s\n' -o StrictHostKeyChecking=accept-new
+  fi
+}
+
+tailnet_peer() {
+  command -v tailscale >/dev/null || return 1
+  command -v jq >/dev/null || return 1
+  tailscale status --json 2>/dev/null |
+    jq -e --arg h "$1" '.Peer[]? | select((.HostName == $h or (.DNSName | startswith($h + "."))) and .Online)' >/dev/null
+}
+
+# Which account on that box answers. Nothing here asks for a password: BatchMode
+# means a box that wants one fails fast rather than hanging on a prompt.
+adopt_find_user() {
+  local host=$1 user opts
+  mapfile -t opts < <(adopt_ssh_opts "$host")
+  while read -r user; do
+    if ssh "${opts[@]}" -l "$user" "$host" true 2>/dev/null; then
+      printf '%s\n' "$user"
+      return 0
+    fi
+  done < <(adopt_candidate_users)
+  return 1
+}
+
+# Every online machine in the tailnet that answers with a nook config. Cheap
+# enough to just do: one SSH probe per online peer, eight seconds at worst.
+adopt_discover() {
+  local host user found=0
+  command -v tailscale >/dev/null || return 1
+
+  while read -r host; do
+    [[ -n $host ]] || continue
+    user=$(adopt_find_user "$host") || continue
+    ssh $(adopt_ssh_opts "$host") -l "$user" "$host" test -f /etc/nook.conf 2>/dev/null || continue
+    printf '%s@%s\n' "$user" "$host"
+    found=1
+  done < <(tailscale status --json 2>/dev/null |
+    jq -r '.Peer[]? | select(.Online) | .HostName' | sort -u)
+
+  ((found))
+}
+
 cmd_adopt() {
   local host="" name="" user=""
   while [[ $# -gt 0 ]]; do
@@ -16,8 +74,32 @@ cmd_adopt() {
       *) host=$1; shift ;;
     esac
   done
-  host=${host:-$(default_nook_host)}
-  [[ -n $host ]] || die "usage: nook adopt [<user>@]<host> [--as <name>]"
+
+  need ssh
+  need jq
+  migrate_single_nook
+
+  # No argument: re-read the box already adopted, or go and find one.
+  [[ -n $host ]] || host=$(default_nook_host)
+  if [[ -z $host ]]; then
+    log "looking for a nook on your tailnet"
+    local found=()
+    mapfile -t found < <(adopt_discover || true)
+    case ${#found[@]} in
+      0) nothing_found ;;
+      1)
+        host=${found[0]}
+        log "found ${host}"
+        ;;
+      *)
+        echo "nook: more than one box on this tailnet is a nook:" >&2
+        printf '  %s\n' "${found[@]}" >&2
+        echo >&2
+        echo "  Adopt them one at a time:  nook adopt ${found[0]}" >&2
+        exit 1
+        ;;
+    esac
+  fi
 
   # The account on the box is rarely the one you are logged in as here — a Pi
   # image ships with its own user — so it may be given, and is remembered.
@@ -26,24 +108,19 @@ cmd_adopt() {
     host=${host#*@}
   fi
 
-  need ssh
-  need jq
-  migrate_single_nook
-
   log "reaching $host"
-  # No BatchMode when there is a terminal: the first connection to a box has a
-  # host key nobody has seen yet, and BatchMode turns that question into
-  # "Host key verification failed" instead of letting you answer it.
-  local opts=(-o ConnectTimeout=10)
-  [[ -t 0 && -t 1 ]] || opts+=(-o BatchMode=yes)
-  [[ -n $user ]] && opts+=(-l "$user")
-  if ! ssh "${opts[@]}" "$host" true; then
+  local opts
+  mapfile -t opts < <(adopt_ssh_opts "$host")
+  if [[ -z $user ]]; then
+    user=$(adopt_find_user "$host") || unreachable "$host" ""
+    [[ $user == "$(id -un)" ]] || log "signing in as $user"
+  elif ! ssh "${opts[@]}" -l "$user" "$host" true 2>/dev/null; then
     unreachable "$host" "$user"
   fi
 
   local conf
-  conf=$(ssh ${user:+-l "$user"} "$host" cat /etc/nook.conf) ||
-    die "$host has no /etc/nook.conf — run the boot script there first, or: nook boot $host"
+  conf=$(ssh "${opts[@]}" -l "$user" "$host" cat /etc/nook.conf 2>/dev/null) ||
+    die "$host has no /etc/nook.conf — run the boot script there first, or: nook boot $user@$host"
 
   # The box names itself. Two boxes that both answer to "nook" need --as, and
   # say so rather than quietly overwriting each other.
@@ -62,9 +139,7 @@ cmd_adopt() {
   {
     echo "# written by nook adopt on $(date -Is)"
     echo "NOOK_HOST=$host"
-    # Falls back to the box's own NOOK_USER, which its boot script recorded, so
-    # `nook adopt <host>` alone still lands on the right account.
-    echo "NOOK_SSH_USER=${user:-$(sed -n 's/^NOOK_USER=//p' <<<"$conf" | head -n1)}"
+    echo "NOOK_SSH_USER=$user"
     printf '%s\n' "$conf"
   } >"$dir/config"
 
@@ -96,6 +171,25 @@ EOF
   if [[ -n $others ]]; then
     echo "  nook use $name   — commands go to $(default_nook) until you do"
   fi
+}
+
+nothing_found() {
+  echo "nook: no box on this tailnet has run the boot script yet." >&2
+  echo >&2
+  if ! command -v tailscale >/dev/null; then
+    echo "  tailscale is not installed here, and that is how nook reaches a box." >&2
+    echo "  https://tailscale.com/download" >&2
+  elif ! tailscale status --json 2>/dev/null | grep -q '"BackendState": *"Running"'; then
+    echo "  This machine is not on a tailnet yet:  sudo tailscale up" >&2
+  else
+    echo "  Online machines on your tailnet right now:" >&2
+    tailscale status --json | jq -r '.Peer[]? | select(.Online) | "    " + .HostName' >&2
+    echo >&2
+    echo "  On the one you want, run:" >&2
+    echo "    curl -fsSL '"$BOOT_URL"' | bash" >&2
+    echo "  or from here, if it already takes SSH:  nook boot <host>" >&2
+  fi
+  exit 1
 }
 
 # "cannot ssh" has three quite different causes and only one of them is the box.

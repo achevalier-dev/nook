@@ -8,9 +8,15 @@ mkdir -p "$NOOK_DATA"
 
 disk=$(lsblk -dpno NAME,TRAN 2>/dev/null | awk '$2 == "usb" { print $1; exit }' || true)
 
+# Read by 35-disk: the network drive is a big image file, and the system disk is
+# the wrong place for one.
+NOOK_HAS_EXTERNAL=0
+
 if [[ -z ${disk:-} ]]; then
-  warn "no USB disk found — $NOOK_DATA will live on the SD card, which is slow and wears out"
+  warn "no USB disk found — $NOOK_DATA will live on the system disk"
+  warn "the shared folder still works; the network drive needs an external disk"
 else
+  NOOK_HAS_EXTERNAL=1
   part=$(lsblk -pnro NAME,TYPE "$disk" | awk '$2 == "part" { print $1; exit }' || true)
 
   if [[ -z ${part:-} ]] || ! blkid "$part" >/dev/null 2>&1; then
@@ -44,6 +50,10 @@ else
   mountpoint -q "$NOOK_DATA" || mount "$NOOK_DATA"
   note "$part mounted at $NOOK_DATA ($(df -h --output=avail "$NOOK_DATA" | tail -n1 | tr -d ' ') free)"
 fi
+
+# A disk that failed to mount leaves the directory on the system disk, whatever
+# the probe said.
+mountpoint -q "$NOOK_DATA" || NOOK_HAS_EXTERNAL=0
 
 # files/  is the shared lane: the FUSE mount and Samba both see it, and so do
 #         containers. Many readers at once, no block device involved.

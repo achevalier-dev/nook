@@ -49,6 +49,24 @@ Both, in that order. If you run `bootstrap.sh` on a Raspberry Pi it tells you so
 
 ## Install
 
+Two commands, one on each machine.
+
+```bash
+# on the box
+curl -fsSL https://raw.githubusercontent.com/achevalier-dev/nook/main/pi/boot.sh | bash
+
+# on your machine
+curl -fsSL https://raw.githubusercontent.com/achevalier-dev/nook/main/bootstrap.sh | bash
+```
+
+The first turns the box into a nook and asks you to click a Tailscale link. The
+second installs the `nook` command, signs this machine in to the same tailnet if
+it is not already, then finds the box and adopts it — no hostname to type, no
+account to look up, no host key to accept by hand.
+
+The rest of this section is what those two do, for when one of them needs
+steering.
+
 ### 1. On the box
 
 Raspberry Pi OS Lite, Debian, Ubuntu — anything apt-based, x86 or ARM. Plug in
@@ -106,9 +124,20 @@ gets missed.
 
 ### 3. Pair them
 
+The bootstrap does this for you. By hand, or for a second box:
+
 ```bash
-nook adopt pi
+nook adopt                 # finds it on the tailnet
+nook adopt thinkcentre     # or name it
+nook adopt admin@pi        # or name the account too
 ```
+
+With no argument it walks the online machines on your tailnet, finds the ones
+that have run the boot script, and takes the single one it finds. It tries your
+own username first and then the accounts the common images ship with, and it
+trusts a Tailscale peer's SSH host key on first contact — the tailnet has
+already authenticated that machine by WireGuard key, which is a stronger check
+than reading a fingerprint off a screen.
 
 `adopt` reads the box's `/etc/nook.conf`, writes an SSH block with a persistent
 control socket, points a Docker context at it, enables the mount unit, and adds

@@ -174,6 +174,19 @@ case ":$PATH:" in
     ;;
 esac
 
+# Two commands, one on each machine. This is the second half of the second one:
+# the box is already on the tailnet, so there is nothing left for a person to
+# look up.
+NOOK="$HOME/.local/bin/nook"
+if [[ $DRY == 0 && -x $NOOK ]] && signed_in; then
+  step "Looking for your nook"
+  if "$NOOK" adopt; then
+    adopted=1
+  else
+    dim "nothing adopted yet — run 'nook adopt' once the box has finished its boot script"
+  fi
+fi
+
 echo
 bold "Done."
 echo
