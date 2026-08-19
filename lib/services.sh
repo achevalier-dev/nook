@@ -145,8 +145,9 @@ write_home_page() {
     port=$(service_port "$name")
     summary=$(service_field "$name" summary)
     [[ -n $port ]] || continue
-    rows+="<li><a href=\"$base:$port\"><span class=\"name\">$name</span>"
-    rows+="<span class=\"what\">$summary</span><span class=\"arrow\">→</span></a></li>"
+    rows+="<li><a href=\"$base:$port\"><span class=\"pip\"></span>"
+    rows+="<span class=\"name\">$name</span><span class=\"go\">→</span>"
+    rows+="<span class=\"what\">$summary</span></a></li>"
   done
 
   [[ -n $rows ]] ||
