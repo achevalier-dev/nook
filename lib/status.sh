@@ -123,10 +123,11 @@ cmd_doctor() {
   fi
 
   if command -v docker >/dev/null; then
-    if docker context inspect nook >/dev/null 2>&1; then
-      check docker "context present"
+    # The context is named after the nook, not "nook" — two boxes would collide.
+    if docker context inspect "$NOOK_CONTEXT" >/dev/null 2>&1; then
+      check docker "context $NOOK_CONTEXT"
     else
-      check docker "no nook context — run: nook adopt"
+      check docker "no $NOOK_CONTEXT context — run: nook adopt"
     fi
   else
     check docker "not installed"

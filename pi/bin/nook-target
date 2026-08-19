@@ -49,7 +49,11 @@ info)
   # Who is actually holding the disk right now. This is the number that matters:
   # a second attacher is how the filesystem gets corrupted.
   local_port=$([[ $NOOK_TRANSPORT == iscsi ]] && echo 3260 || echo 10809)
-  echo "attached    $(ss -Htn state established "sport = :$local_port" 2>/dev/null | awk '{print $4}' | cut -d: -f1 | sort -u | paste -sd' ' || echo none)"
+  # paste of nothing is an empty string, not "none" — and a blank field reads
+  # like a broken command rather than an answer.
+  holders=$(ss -Htn state established "sport = :$local_port" 2>/dev/null |
+    awk '{print $4}' | rev | cut -d: -f2- | rev | sort -u | paste -sd' ' || true)
+  echo "attached    ${holders:-none}"
   ;;
 resize)
   [[ ${2:-} ]] || { usage >&2; exit 2; }
