@@ -18,8 +18,19 @@ read -r _ size used avail _ < <(df -B1 --output=source,size,used,avail,pcent "$d
 containers=$(docker ps -q 2>/dev/null | wc -l)
 attached=$(ss -Htn state established "sport = :$port" 2>/dev/null | wc -l)
 
+# What the machine actually is. A page that says "Raspberry Pi 5 Model B Rev 1.1"
+# is describing something real; one that says "your server" could be anything.
+model=$(tr -d '\0' </proc/device-tree/model 2>/dev/null ||
+  cat /sys/devices/virtual/dmi/id/product_name 2>/dev/null || echo "")
+
+# Which stacks are actually up, so the page can show a service as stopped rather
+# than link to something that will not answer.
+services=$(docker compose ls --format json 2>/dev/null | jq -c '[.[].Name]' 2>/dev/null || echo '[]')
+
 jq -nc \
   --arg name "${NOOK_NAME:-nook}" \
+  --arg model "$model" \
+  --argjson services "$services" \
   --arg transport "$transport" \
   --arg uptime "$(uptime -p 2>/dev/null | sed 's/^up //')" \
   --argjson temp "${temp:-null}" \
@@ -29,6 +40,7 @@ jq -nc \
   --argjson containers "${containers:-0}" \
   --argjson attached "${attached:-0}" \
   --argjson load "$(cut -d' ' -f1 /proc/loadavg)" \
-  '{name: $name, uptime: $uptime, temp: $temp, load: $load,
+  '{name: $name, model: $model, uptime: $uptime, temp: $temp, load: $load,
     disk: {size: $size, used: $used, avail: $avail},
-    containers: $containers, transport: $transport, attached: $attached}'
+    containers: $containers, transport: $transport, attached: $attached,
+    services: $services}'
