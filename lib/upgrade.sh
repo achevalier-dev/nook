@@ -58,6 +58,10 @@ upgrade_box() {
   if [[ -d $ROOT/pi/modules ]] && command -v rsync >/dev/null; then
     log "re-running the boot script on $NOOK, from this checkout"
     rsync -a --delete "$ROOT/pi/" "$NOOK_HOST:/tmp/nook-boot/"
+    # 55-api looks for the catalogue beside the modules, at ../../services. Send
+    # it too, or the box keeps whatever catalogue it last fetched and a change
+    # to a manifest here never reaches it.
+    rsync -a --delete "$ROOT/services/" "$NOOK_HOST:/tmp/services/"
     ssh -t "$NOOK_HOST" "sudo bash /tmp/nook-boot/boot.sh"
     echo
     echo "re-adopt if its transport or paths changed:  nook adopt"

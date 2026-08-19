@@ -1,1 +1,1 @@
-{"name":"dockge","summary":"A web UI for the compose stacks on this box","port":5001,"docs":"https://github.com/louislam/dockge"}
+{"name": "dockge", "summary": "A web UI for the compose stacks on this box", "port": 5001, "docs": "https://github.com/louislam/dockge", "category": "tools"}

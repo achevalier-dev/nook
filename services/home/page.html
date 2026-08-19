@@ -208,30 +208,59 @@
   }
   #q::placeholder { color: #ffffff44; letter-spacing: .1em; }
   #q:focus { border-color: var(--amber-lit); }
-  #cards {
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
-    gap: .7rem; overflow-y: auto; padding: .2rem;
+  #cards { overflow-y: auto; padding: .2rem .2rem 1rem; }
+  .group { margin-bottom: 1.4rem; }
+  .group > h4 {
+    margin: 0 0 .6rem; color: #ffffff5c; font-size: .55rem;
+    letter-spacing: .3em; text-transform: uppercase; font-weight: 400;
+  }
+  .group > div {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(15.5rem, 1fr));
+    gap: .6rem;
   }
   .card {
-    background: var(--face); border-radius: .5rem; padding: .9rem 1rem 1rem;
-    display: flex; flex-direction: column; gap: .3rem;
-    box-shadow: 0 1px 0 #ffffff40 inset, 0 6px 16px -10px #000;
+    background: var(--face); border-radius: .45rem; padding: .85rem .95rem .8rem;
+    display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto auto;
+    column-gap: .75rem; row-gap: .15rem; align-content: start;
+    box-shadow: 0 1px 0 #ffffff59 inset, 0 6px 16px -12px #000;
+    transition: transform .16s, box-shadow .16s;
   }
-  .card h3 { margin: 0; font-size: .92rem; letter-spacing: -.01em; }
-  .card p { margin: 0; color: var(--dim); font-size: .74rem; flex: 1; }
-  .card .end { display: flex; align-items: center; justify-content: space-between; gap: .6rem; margin-top: .5rem; }
+  .card:hover { transform: translateY(-1px); box-shadow: 0 1px 0 #ffffff59 inset, 0 10px 22px -12px #000; }
+  /* An engraved plate with the initial on it: a marketplace needs a mark, and
+     a letter is the one mark that never needs drawing. */
+  .mono {
+    grid-row: 1 / 3; width: 2.1rem; height: 2.1rem; border-radius: .3rem;
+    display: grid; place-items: center;
+    font: 700 .95rem/1 system-ui, "Helvetica Neue", Helvetica, Arial, sans-serif;
+    color: var(--dim); background: #16181c0a;
+    box-shadow: 0 1px 0 #ffffffcc, inset 0 1px 2px #16181c1f;
+  }
+  .card.on .mono { color: var(--amber); background: #c8871a14; }
+  .card h3 { margin: 0; font-size: .88rem; font-weight: 700; letter-spacing: -.015em; align-self: center; }
+  .card p {
+    margin: 0; color: var(--dim); font-size: .72rem; line-height: 1.4;
+    /* Two lines for every card, so a row of them shares a baseline. */
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden; min-height: 2em;
+  }
+  .card .end {
+    grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between;
+    gap: .6rem; margin-top: .55rem; padding-top: .55rem; border-top: 1px solid #16181c14;
+  }
   .card .port { color: var(--faint); font-size: .68rem; font-variant-numeric: tabular-nums; }
+  .card .state { color: var(--amber); font-size: .58rem; letter-spacing: .18em; text-transform: uppercase; }
   .card .act {
-    font: inherit; font-size: .62rem; letter-spacing: .14em; text-transform: uppercase;
-    color: var(--ink); background: none; border: 1px solid var(--rule);
-    padding: .35rem .7rem; border-radius: .25rem; cursor: pointer;
+    font: inherit; font-size: .6rem; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--dim); background: none; border: 1px solid var(--rule);
+    padding: .32rem .65rem; border-radius: .2rem; cursor: pointer;
+    transition: background .16s, color .16s, border-color .16s;
   }
+  .card .act.go:hover { background: var(--amber); border-color: var(--amber); color: #fff; }
   .card .act:hover { border-color: var(--amber); color: var(--amber); }
   .card .act.danger:hover, .card .act.sure { border-color: var(--red); color: var(--red); }
   .card .act:disabled { cursor: default; opacity: .45; }
-  .card.on { outline: 1px solid var(--amber); }
-  .card .state { color: var(--amber); font-size: .6rem; letter-spacing: .16em; text-transform: uppercase; }
-  .card .msg { color: var(--dim); font-size: .68rem; white-space: pre-wrap; }
+  .card.on { box-shadow: 0 0 0 1px var(--amber) inset, 0 1px 0 #ffffff59 inset, 0 6px 16px -12px #000; }
+  .card .msg { grid-column: 1 / -1; color: var(--dim); font-size: .68rem; white-space: pre-wrap; margin: .4rem 0 0; }
   .card .msg.bad { color: var(--red); }
   .browse {
     font: inherit; font-size: .68rem; letter-spacing: .16em; text-transform: uppercase;
@@ -676,8 +705,8 @@
 
   function card(s) {
     const c = el('div', 'card' + (s.installed ? ' on' : ''));
-    const h = el('h3', '', s.name);
-    c.appendChild(h);
+    c.appendChild(el('span', 'mono', s.name[0].toUpperCase()));
+    c.appendChild(el('h3', '', s.name));
     c.appendChild(el('p', '', s.summary || ''));
 
     const end = el('div', 'end');
@@ -686,11 +715,11 @@
 
     const msg = el('p', 'msg');
 
-    const run = (label, action, danger) => {
-      const b = el('button', 'act' + (danger ? ' danger' : ''), label);
+    const run = (label, action, kind) => {
+      const b = el('button', 'act ' + kind, label);
       let armed = false, timer = 0;
       b.addEventListener('click', async () => {
-        if (danger && !armed) {
+        if (kind === 'danger' && !armed) {
           armed = true; b.textContent = 'sure?'; b.classList.add('sure');
           timer = setTimeout(() => { armed = false; b.textContent = label; b.classList.remove('sure'); }, 5000);
           return;
@@ -717,10 +746,10 @@
     const ops = el('div');
     ops.style.cssText = 'display:flex;gap:.35rem';
     if (!s.installed) {
-      ops.appendChild(run('add', 'install', false));
+      ops.appendChild(run('add', 'install', 'go'));
     } else {
-      ops.appendChild(run('update', 'update', false));
-      if (s.name !== 'home') ops.appendChild(run('remove', 'remove', true));
+      ops.appendChild(run('update', 'update', ''));
+      if (s.name !== 'home') ops.appendChild(run('remove', 'remove', 'danger'));
     }
     end.appendChild(ops);
     c.appendChild(end);
@@ -728,15 +757,36 @@
     return c;
   }
 
+  // Grouped, because eleven cards in one grid is a wall and four groups of two
+  // or three is a shelf you can read.
+  const GROUPS = [
+    ['media', 'media'],
+    ['documents', 'documents & money'],
+    ['home', 'home & automation'],
+    ['tools', 'tools'],
+    ['other', 'other'],
+  ];
+
   function renderMarket() {
     const needle = q.value.trim().toLowerCase();
     const shown = catalogue.filter(s =>
       !needle || s.name.includes(needle) || (s.summary || '').toLowerCase().includes(needle));
+
     cards.textContent = '';
-    // Not yet installed first: this is a place you come to add something.
-    shown.sort((a, b) => (a.installed - b.installed) || a.name.localeCompare(b.name));
-    shown.forEach(s => cards.appendChild(card(s)));
-    if (!shown.length) cards.appendChild(el('p', 'hint', 'nothing matches that'));
+    for (const [key, title] of GROUPS) {
+      const mine = shown.filter(s => (s.category || 'other') === key);
+      if (!mine.length) continue;
+      // Not yet installed first: this is somewhere you come to add something.
+      mine.sort((a, b) => (a.installed - b.installed) || a.name.localeCompare(b.name));
+
+      const g = el('div', 'group');
+      g.appendChild(el('h4', '', title));
+      const grid = el('div');
+      mine.forEach(s => grid.appendChild(card(s)));
+      g.appendChild(grid);
+      cards.appendChild(g);
+    }
+    if (!cards.children.length) cards.appendChild(el('p', 'hint', 'nothing matches that'));
   }
 
   q.addEventListener('input', renderMarket);

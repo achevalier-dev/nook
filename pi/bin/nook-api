@@ -80,6 +80,7 @@ catalogue_json() {
       --argjson installed "$([[ -d $STACKS/$name ]] && echo true || echo false)" \
       --argjson running "$(grep -qx "$name" <<<"$running" && echo true || echo false)" \
       '{name: $name, summary: (.summary // ""), docs: (.docs // null),
+        category: (.category // "other"),
         port: (if $port == "" then null else ($port | tonumber) end),
         installed: $installed, running: $running}' "$dir/nook.json"
   done | jq -sc --arg box "$NOOK_NAME" '{ok: true, box: $box, services: .}'

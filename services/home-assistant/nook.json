@@ -1,1 +1,1 @@
-{"name":"home-assistant","summary":"Home automation, with the local network visible to it","port":8123,"docs":"https://www.home-assistant.io","host_network":true}
+{"name": "home-assistant", "summary": "Home automation, with the local network visible to it", "port": 8123, "docs": "https://www.home-assistant.io", "host_network": true, "category": "home"}

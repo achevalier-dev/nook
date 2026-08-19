@@ -25,6 +25,10 @@ for dir in services/*/; do
   jq -e '.summary | length > 0' "$dir/nook.json" >/dev/null ||
     { echo "services/$name has no summary — nook services would print a blank" >&2; bad=1; }
 
+  # The catalogue groups by this; without one a service lands under "other".
+  jq -e '.category | length > 0' "$dir/nook.json" >/dev/null ||
+    { echo "services/$name has no category — it would be filed under other" >&2; bad=1; }
+
   # Two services on one port means the second one to start just fails.
   port=$(jq -r '.port // empty' "$dir/nook.json")
   if [[ -n $port ]]; then

@@ -125,8 +125,10 @@ cmd_update() {
 
   if ((quiet)); then
     # One line, because this arrives unasked while somebody is doing something
-    # else. What changed is in `git log`, and doctor names the version.
-    notify "nook updated to $after — $(git -C "$root" rev-list --count "$before..$after") new commits" >/dev/null
+    # else: a desktop notification, and the same sentence in the journal for
+    # whoever reads `systemctl --user status nook-update` afterwards. What
+    # changed is in `git log`, and `nook doctor` names the version.
+    notify "nook updated to $after — $(git -C "$root" rev-list --count "$before..$after") new commits"
     return 0
   fi
 

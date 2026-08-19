@@ -1,1 +1,1 @@
-{"name":"jellyfin","summary":"Films and television, from the shared folder","port":8096,"docs":"https://jellyfin.org","library":"files/media"}
+{"name": "jellyfin", "summary": "Films and television, from the shared folder", "port": 8096, "docs": "https://jellyfin.org", "library": "files/media", "category": "media"}

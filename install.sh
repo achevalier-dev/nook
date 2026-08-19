@@ -78,6 +78,21 @@ if command -v systemctl >/dev/null; then
   rm -f "$UNIT_DIR/nook-mount.service"
   systemctl --user daemon-reload 2>/dev/null || true
   echo "installed $UNIT_DIR/nook-mount@.service"
+
+  # A machine nobody thinks about is the one that ends up months behind, and a
+  # stale nook here reads as features that stopped working rather than as an old
+  # version. So the daily update goes on by itself — but never over somebody's
+  # working copy: a checkout with local changes would refuse the fast-forward
+  # every night, and one being edited is not an installer's business.
+  if [[ ${NOOK_NO_AUTO_UPDATE:-0} != 1 ]] &&
+    git -C "$REPO" rev-parse --abbrev-ref '@{u}' >/dev/null 2>&1 &&
+    [[ -z $(git -C "$REPO" status --porcelain 2>/dev/null) ]]; then
+    cp -f "$REPO/systemd/nook-update.service" "$REPO/systemd/nook-update.timer" "$UNIT_DIR/"
+    systemctl --user daemon-reload 2>/dev/null || true
+    if systemctl --user enable --now nook-update.timer >/dev/null 2>&1; then
+      echo "nook updates itself daily — nook update --no-auto turns that off"
+    fi
+  fi
 else
   echo "no systemd here — 'nook mount' will call sshfs directly" >&2
 fi

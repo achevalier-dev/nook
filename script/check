@@ -68,6 +68,7 @@ multi() { ./test/nooks_test.sh; }
 pipe() { ./test/boot_pipe_test.sh; }
 services() { ./test/services_test.sh; }
 api() { ./test/api_test.sh; }
+update() { ./test/update_test.sh; }
 
 case ${1-} in
   --syntax-only) syntax ;;
@@ -81,11 +82,12 @@ case ${1-} in
   --pipe) pipe ;;
   --services) services ;;
   --api) api ;;
-  "") syntax && lint && json && dispatch && blocks && drive && boot && multi && pipe && services && api ;;
+  --update) update ;;
+  "") syntax && lint && json && dispatch && blocks && drive && boot && multi && pipe && services && api && update ;;
   *)
     echo "usage: script/check [--syntax-only | --lint-only | --json | --dispatch |" >&2
     echo "                     --blocks | --drive | --boot | --multi | --pipe |" >&2
-    echo "                     --services | --api]" >&2
+    echo "                     --services | --api | --update]" >&2
     exit 2
     ;;
 esac

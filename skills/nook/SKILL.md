@@ -111,6 +111,12 @@ nook disk --local    # the same without the SSH round trip
 nook help --all      # every command, including the rare ones
 ```
 
+The CLI on the machine you are sitting at updates itself daily
+(`nook update --auto` / `--no-auto`, a user timer, fast-forward only). Before
+concluding that a command or a menu row is broken, check `nook doctor`'s `cli`
+line: a copy that is behind is missing commands the box already has, which looks
+exactly like a bug.
+
 `NOOK_HOME` moves the config directory, which is how the tests and any
 throwaway experiment stay out of the real one:
 

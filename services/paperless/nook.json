@@ -1,1 +1,1 @@
-{"name":"paperless","summary":"Scans and documents, indexed and searchable","port":8000,"docs":"https://docs.paperless-ngx.com","library":"files/documents"}
+{"name": "paperless", "summary": "Scans and documents, indexed and searchable", "port": 8000, "docs": "https://docs.paperless-ngx.com", "library": "files/documents", "category": "documents"}

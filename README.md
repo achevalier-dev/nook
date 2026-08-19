@@ -399,7 +399,7 @@ times a day because nobody said otherwise. `--speedtest` at boot, or
 
 `nook update` pulls the checkout the command runs from — bootstrap puts it in
 `~/.local/share/nook` — and re-links it, so a fix does not mean remembering
-where that is.
+where that is. It does that daily on its own; `nook update --no-auto` stops it.
 
 `NOOK=<name>` picks a nook for one command. `NOOK_HOME` moves the whole config
 directory, which is how a throwaway experiment stays out of the real one.
@@ -452,6 +452,26 @@ nook update            # the nook command on this machine
 nook upgrade           # newer images for its services, restarting what changed
 nook upgrade --box     # re-run the box's boot script — it is idempotent
 ```
+
+Both ends keep themselves current, because the machine nobody thinks about is
+the one that ends up months behind:
+
+```bash
+nook update --auto     # daily, on this machine — on after install.sh
+nook update --no-auto  # …or not
+nook upgrade --auto    # weekly, on the box — on after the boot script
+```
+
+A stale command here does not look like an old version; it looks like features
+that stopped working, because a menu row for a command this copy does not have
+simply hides itself. So `nook update` runs from a user timer, daily with two
+hours of jitter and `Persistent=true` for a laptop that was shut at the hour.
+It says nothing on the days nothing moved and sends one notification when it
+did, and `nook doctor` names the version and how far behind it is.
+
+It only ever fast-forwards. A checkout with local work is refused and left
+alone — `install.sh` will not even schedule the timer over one — so a working
+copy is never rewritten by a timer.
 
 `nook upgrade` restarts only what actually changed, because restarting a service
 that did not is downtime for nothing. It also says when the client itself is
