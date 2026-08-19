@@ -1,7 +1,7 @@
 [
   {
     "command": "nook status",
-    "output": "nook       nook  ·  up 6 hours, 32 minutes\nload       0.20   temp 58.4°C\ndisk       75G used of 114G  ·  34G free\ncontainers 4 running\ndrive      nbd, attached by 1\nfolder     mounted at /home/you/nook/nook"
+    "output": "nook       nook  ·  up 6 hours, 36 minutes\nload       0.19   temp 59.4°C\ndisk       75G used of 114G  ·  34G free\ncontainers 4 running\ndrive      nbd, free\nfolder     mounted at /home/you/nook/nook"
   },
   {
     "command": "nook mount",
@@ -9,19 +9,19 @@
   },
   {
     "command": "nook push /tmp/nook-demo/holiday-2026.mkv media/",
-    "output": "      6,000,000 100%    6.62MB/s    0:00:00 (xfr#1, to-chk=0/1)"
+    "output": "      6,000,000 100%    6.71MB/s    0:00:00 (xfr#1, to-chk=0/1)"
   },
   {
     "command": "nook attach",
-    "output": "already attached at /dev/nbd0"
+    "output": "Negotiation: ..size = 38912MB\nConnected /dev/nbd0\nattached at /dev/nbd0 — no filesystem yet, run: nook format"
   },
   {
     "command": "nook disk",
-    "output": ""
+    "output": "disk       /dev/nbd0 via nbd\nmounted    no\ntransport   nbd\nimage       /mnt/nook/disk.img (38G allocated 39G)\nexport      nook\nportal      100.x.y.z:10809\nattached    100.x.y.z"
   },
   {
     "command": "nook eject",
-    "output": ""
+    "output": "ejected"
   },
   {
     "command": "nook speedtest --last",
@@ -29,6 +29,6 @@
   },
   {
     "command": "nook doctor",
-    "output": "tailscale     online, 100.x.y.z\nssh           ok\ntransport     nbd\nnbd           installed\nsshfs         installed\ndocker        context nook-nook\ndrive         /dev/nbd0\ncli           7ee64c6, updates daily, modified here"
+    "output": "tailscale     online, 100.x.y.z\nssh           ok\ntransport     nbd\nnbd           installed\nsshfs         installed\ndocker        context nook-nook\ndrive         not attached here\ncli           099851c, updates daily, modified here"
   }
 ]

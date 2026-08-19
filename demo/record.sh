@@ -36,8 +36,11 @@ fi
 # moves the demo's state along.
 if ((REAL)); then
   # The arc is: the box, then the shared folder, then the drive, then health.
-  # The drive is the half nothing else does, so it gets three of the nine.
+  # The drive is the half nothing else does, so it gets three of the eight.
   SEQUENCE=(
+    # Whatever the last run left behind, the recording starts from a box with
+    # its drive free and its folder unmounted.
+    "hide:eject"
     "show:status"
     "hide:umount"
     "show:mount"
@@ -80,10 +83,11 @@ sanitise() {
     -e "s/\b$(hostname)\b/thismachine/g"
 }
 
+# One JSON object per line, assembled into an array at the end. Writing the
+# commas by hand means a command that dies mid-run leaves a file that is not
+# JSON at all, and the committed transcript is what the GIF is drawn from.
 out=demo/transcript.json
 : >"$out.tmp"
-echo "[" >>"$out.tmp"
-first=1
 
 for entry in "${SEQUENCE[@]}"; do
   mode=${entry%%:*}
@@ -98,13 +102,10 @@ for entry in "${SEQUENCE[@]}"; do
   # Failure is part of the demo — the refusal is the point of one of these.
   # shellcheck disable=SC2086
   body=$("${RUN[@]}" $cmd 2>&1 | sanitise || true)
-  [[ $first == 1 ]] || echo "," >>"$out.tmp"
-  first=0
-  jq -n --arg cmd "nook $cmd" --arg body "$body" '{command: $cmd, output: $body}' >>"$out.tmp"
+  jq -nc --arg cmd "nook $cmd" --arg body "$body" '{command: $cmd, output: $body}' >>"$out.tmp"
 done
 
-echo "]" >>"$out.tmp"
-jq . "$out.tmp" >"$out"
+jq -s . "$out.tmp" >"$out"
 rm -f "$out.tmp"
 rm -rf /tmp/nook-demo
 # The recording is not a reason to leave a six-megabyte file on somebody's box.
