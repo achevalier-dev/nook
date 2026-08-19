@@ -6,33 +6,39 @@
   /* A cream enamel dial with a red needle, and the services set below it like a
      contents page rather than a grid of cards. */
   :root {
-    --bg: #e9e3d4;       /* aged paper */
-    --face: #f7f3e8;     /* the enamel of the dial itself */
-    --ink: #221f1a;
-    --dim: #6b6559;
-    --faint: #a8a191;
-    --rule: #d3cbb7;
-    --accent: #1f5138;   /* racing green */
-    --red: #b31d24;
-    --live: #1f7a37;
+    /* Sand ground, bone dials, teal ink, vermilion needle. Cartographic rather
+       than vintage-automotive: the dials have to sit *on* something, and a
+       cream instrument on a cream page never lifts off it. */
+    --bg: #e5ddcd;       /* sand */
+    --face: #faf7f0;     /* the bone of the dial itself */
+    --ink: #16211f;      /* teal-black */
+    --dim: #5d6b66;
+    --faint: #9aa39c;
+    --rule: #cbc2ae;
+    --accent: #0f6466;   /* teal */
+    --red: #dc4726;      /* vermilion */
+    --deep: #9c3418;     /* burnt, for the redline */
+    --live: #1f7a5c;
   }
-  /* No dark variant on purpose: the thing being made is a cream enamel dial,
-     and inverting it makes it a different object rather than the same one at
+  /* No dark variant on purpose: the thing being made is a bone dial on sand,
+     and inverting it makes a different object rather than the same one at
      night. */
   * { box-sizing: border-box; }
   html { background: var(--bg); }
   body {
-    margin: 0; padding: clamp(2.5rem, 6vw, 4.5rem) 1.5rem 3rem;
-    background: var(--bg);
+    margin: 0; min-height: 100vh;
+    padding: clamp(2.5rem, 6vw, 4.5rem) 1.5rem 3rem;
+    background-color: var(--bg);
+    /* Graph paper at 7px, and a wash of the accent behind the cluster. Fixed,
+       so neither stops where the content does and leaves a seam. */
+    background-image:
+      radial-gradient(40rem 22rem at 50% 14%, #0f646618, transparent 72%),
+      repeating-linear-gradient(0deg, #16211f0a 0 1px, transparent 1px 7px),
+      repeating-linear-gradient(90deg, #16211f0a 0 1px, transparent 1px 7px);
+    background-attachment: fixed;
     color: var(--ink);
     font: 15px/1.6 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
     -webkit-font-smoothing: antialiased;
-  }
-  /* Fixed, so the light behind the cluster does not stop where the content
-     does and leave a seam across the page. */
-  body::before {
-    content: ""; position: fixed; inset: 0; pointer-events: none; z-index: -1;
-    background: radial-gradient(42rem 26rem at 50% 20%, #ffffff90, transparent 72%);
   }
   main { max-width: 46rem; margin: 0 auto; }
 
@@ -71,27 +77,29 @@
     gap: 1rem; margin: 2.5rem 0;
   }
   .g { text-align: center; }
-  .g svg { width: 100%; max-width: 10rem; display: block; margin: 0 auto; }
-  .face { fill: var(--face); stroke: var(--rule); stroke-width: 1; }
+  /* The dial is a physical disc laid on the page, so it casts a little. */
+  .g svg { width: 100%; max-width: 10rem; display: block; margin: 0 auto;
+           filter: drop-shadow(0 2px 2px #16211f14) drop-shadow(0 6px 12px #16211f0f); }
+  .face { fill: var(--face); stroke: #16211f26; stroke-width: .8; }
   .track { fill: none; stroke: var(--rule); stroke-width: 3.5; stroke-linecap: round; }
-  .redline { fill: none; stroke: var(--red); stroke-width: 3.5; opacity: .32; stroke-linecap: butt; }
+  .redline { fill: none; stroke: var(--deep); stroke-width: 3.5; opacity: .38; stroke-linecap: butt; }
   .fill {
     fill: none; stroke: var(--accent); stroke-width: 3.5; stroke-linecap: round;
-    filter: drop-shadow(0 0 3px #1f513855);
+    filter: drop-shadow(0 0 3px #0f646644);
     transition: stroke-dasharray .42s cubic-bezier(.22, .61, .36, 1), stroke .6s;
   }
-  .fill.hot { stroke: var(--red); filter: drop-shadow(0 0 4px #b31d2488); }
-  .tick { stroke: var(--dim); stroke-width: 1; opacity: .7; }
-  .tick.major { stroke: var(--ink); stroke-width: 1.7; opacity: .9; }
+  .fill.hot { stroke: var(--red); filter: drop-shadow(0 0 4px #dc472688); }
+  .tick { stroke: var(--dim); stroke-width: .9; opacity: .55; }
+  .tick.major { stroke: var(--ink); stroke-width: 1.6; opacity: .85; }
   .needle {
     stroke: var(--red); stroke-width: 2; stroke-linecap: round;
     transition: transform .42s cubic-bezier(.22, .61, .36, 1);
     /* No transform-origin here on purpose: the rotate() attribute already
        carries its own centre, and a CSS origin is applied on top of it, which
        pivots the needle off the dial. */
-    filter: drop-shadow(0 0 3px #b31d2455);
+    filter: drop-shadow(0 0 3px #dc472655);
   }
-  .hub { fill: var(--face); stroke: var(--rule); stroke-width: 1.5; }
+  .hub { fill: var(--face); stroke: var(--ink); stroke-width: 1.1; opacity: .9; }
   .read { font-size: 1.4rem; margin-top: -.35rem; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
   .read small { font-size: .68rem; color: var(--faint); margin-left: .12rem; }
   .lbl { color: var(--faint); font-size: .6rem; letter-spacing: .2em; text-transform: uppercase; margin-top: .35rem; }
@@ -192,11 +200,16 @@
        </svg>`);
   }
 
-  function pose(g, f, hot) {
+  function pose(g, f, hot, ms, ease) {
     const v = Math.max(0, Math.min(1, f || 0));
-    g.querySelector('.fill').setAttribute('stroke-dasharray', `${(v * LEN).toFixed(1)} ${LEN.toFixed(1)}`);
-    g.querySelector('.fill').classList.toggle('hot', !!hot);
-    g.querySelector('.needle').setAttribute('transform', `rotate(${225 + v * SWEEP} 50 50)`);
+    const fill = g.querySelector('.fill'), needle = g.querySelector('.needle');
+    for (const el of [fill, needle]) {
+      el.style.transitionDuration = ms ? ms + 'ms' : '';
+      el.style.transitionTimingFunction = ease || '';
+    }
+    fill.setAttribute('stroke-dasharray', `${(v * LEN).toFixed(1)} ${LEN.toFixed(1)}`);
+    fill.classList.toggle('hot', !!hot);
+    needle.setAttribute('transform', `rotate(${225 + v * SWEEP} 50 50)`);
   }
 
   const gauges = [...document.querySelectorAll('.g')];
@@ -204,24 +217,28 @@
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
   let ignited = false;
 
-  // How a needle on a real car finds its reading: it runs up past the value,
-  // falls back under it, and trembles across it a couple of times before it
-  // rests. Never to the stop — that is a self-test, not a measurement. Every
-  // dial gets its own delay and its own amplitudes, because four needles moving
-  // in lockstep read as one animation rather than four instruments.
+  // An engine warming, then the throttle. The needle drifts up slowly to about
+  // half, gets blipped past the reading, falls back under it, is blipped again
+  // more gently, and settles. Slow where it should be slow and quick where it
+  // should be quick — one duration for the whole thing is what makes an
+  // animation read as an animation.
+  const EASE_IN = 'cubic-bezier(.4,.02,.6,.3)';   // lazy, like something spinning up
+  const EASE_BLIP = 'cubic-bezier(.1,.85,.25,1)'; // snaps, then eases off
+  const EASE_REST = 'cubic-bezier(.25,.9,.3,1)';
+
   function ignite(g, v, hot) {
-    const over = rand(.05, .09), under = rand(.02, .045);
+    const blip = rand(.1, .17), dip = rand(.14, .22);
     const steps = [
-      [rand(60, 220), Math.min(1, v + over)],
-      [rand(360, 440), Math.max(0, v - under)],
-      [rand(240, 300), Math.min(1, v + under * .45)],
-      [rand(190, 240), Math.max(0, v - under * .22)],
-      [rand(170, 210), v],
+      [rand(80, 240), v * rand(.45, .6), rand(560, 720), EASE_IN],
+      [rand(620, 760), Math.min(1, v + blip), rand(200, 280), EASE_BLIP],
+      [rand(260, 340), Math.max(0, v * (1 - dip)), rand(360, 460), EASE_BLIP],
+      [rand(380, 460), Math.min(1, v + blip * .35), rand(180, 230), EASE_BLIP],
+      [rand(220, 280), v, rand(460, 600), EASE_REST],
     ];
     let at = 0;
-    for (const [delay, value] of steps) {
+    for (const [delay, value, ms, ease] of steps) {
       at += delay;
-      setTimeout(() => pose(g, value, hot), at);
+      setTimeout(() => pose(g, value, hot, ms, ease), at);
     }
   }
 
