@@ -1,0 +1,38 @@
+# The index page, plus one proxied path.
+#
+# nginx substitutes ${NOOK_TS_IP} and ${NOOK_API_PORT} from the environment when
+# the container starts. The manage controls have to answer on the same origin as
+# the page — under `tailscale serve` the page is https, and a browser will not
+# let it call a plain-http port on the side.
+#
+# Nothing is proxied but /api/, and behind it nook-api will only act on a name
+# that exists in this box's catalogue.
+
+server {
+  listen 80;
+  server_name _;
+
+  root /usr/share/nginx/html;
+  index index.html;
+
+  # The vitals file is rewritten every 20 seconds; a cached copy is a page
+  # reporting a temperature from ten minutes ago.
+  location = /status.json {
+    add_header Cache-Control "no-store";
+  }
+
+  location /api/ {
+    proxy_pass http://${NOOK_TS_IP}:${NOOK_API_PORT}/;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header Connection "";
+    # Adding a service is a docker pull over a home connection: minutes, not
+    # seconds. The default 60 would cut it off mid-layer and report a failure
+    # for something that is still working.
+    proxy_read_timeout 900s;
+    proxy_send_timeout 900s;
+    # A box without the manage controls has nothing on that port, and the page
+    # is written to treat the refusal as "read-only" rather than as an error.
+    proxy_intercept_errors off;
+  }
+}

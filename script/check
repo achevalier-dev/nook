@@ -5,7 +5,7 @@ set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
 SCRIPTS=(bin/nook install.sh bootstrap.sh script/check demo/fake-nook demo/record.sh
-  pi/boot.sh pi/bin/nook-target pi/bin/nook-info)
+  pi/boot.sh pi/bin/nook-target pi/bin/nook-info pi/bin/nook-api pi/bin/nook-upgrade)
 while IFS= read -r f; do SCRIPTS+=("$f"); done < <(
   find lib pi/modules test -name '*.sh' -type f | sort
 )
@@ -67,6 +67,7 @@ boot() { ./test/boot_modules_test.sh; }
 multi() { ./test/nooks_test.sh; }
 pipe() { ./test/boot_pipe_test.sh; }
 services() { ./test/services_test.sh; }
+api() { ./test/api_test.sh; }
 
 case ${1-} in
   --syntax-only) syntax ;;
@@ -79,11 +80,12 @@ case ${1-} in
   --multi) multi ;;
   --pipe) pipe ;;
   --services) services ;;
-  "") syntax && lint && json && dispatch && blocks && drive && boot && multi && pipe && services ;;
+  --api) api ;;
+  "") syntax && lint && json && dispatch && blocks && drive && boot && multi && pipe && services && api ;;
   *)
     echo "usage: script/check [--syntax-only | --lint-only | --json | --dispatch |" >&2
     echo "                     --blocks | --drive | --boot | --multi | --pipe |" >&2
-    echo "                     --services]" >&2
+    echo "                     --services | --api]" >&2
     exit 2
     ;;
 esac

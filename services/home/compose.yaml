@@ -6,7 +6,15 @@ services:
     # can actually remember. Boxes that have been used for something else
     # usually do not, so nook picks and records the port at install time.
     ports: ["${NOOK_TS_IP}:${HOME_PORT:-8880}:80"]
+    # Read by the config template below, which nginx renders at start. The page
+    # and its manage controls have to answer on one origin.
+    environment:
+      NOOK_TS_IP: ${NOOK_TS_IP}
+      NOOK_API_PORT: ${NOOK_API_PORT:-8881}
     volumes:
       # Written by `nook install` and `nook uninstall`, so the page is whatever
       # is actually running rather than whatever was true when it was set up.
       - ${NOOK_DATA}/www:/usr/share/nginx/html:ro
+      # Pushed into the stack directory beside the compose file, by whichever
+      # side installed this — a laptop running `nook install`, or the box itself.
+      - ./default.conf.template:/etc/nginx/templates/default.conf.template:ro

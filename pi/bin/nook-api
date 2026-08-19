@@ -1,0 +1,227 @@
+#!/usr/bin/env bash
+# nook-api — the small HTTP surface behind the manage controls on the index
+# page: what the catalogue holds, what is installed, and add / update / remove
+# for one catalogued name.
+#
+# One process per connection, started by nook-api.socket. There is no daemon
+# here and nothing running when nobody is asking, which is the same bargain as
+# nook-status.timer: systemd holds the port, bash does the work.
+#
+# Two things are the whole security model, and neither is a password:
+#
+#   - the socket is bound to this box's tailnet address, so only the tailnet can
+#     reach it, exactly like every service the box publishes;
+#   - a request can only ever name something that already exists in the
+#     catalogue directory on this box. There is no path, no image name and no
+#     compose file in a request — only a name that must match a directory.
+#
+# Anything else is a 404. It is a narrower surface than Dockge, which is in the
+# catalogue and hands out the docker socket.
+
+set -uo pipefail
+
+# The generated config, which names the box and where its data is. Overridable
+# so the behaviour tests can run this against a directory in /tmp.
+NOOK_CONF=${NOOK_CONF:-/etc/nook.conf}
+# shellcheck disable=SC1090,SC1091
+. "$NOOK_CONF" 2>/dev/null || true
+
+NOOK_DATA=${NOOK_DATA:-/mnt/nook}
+NOOK_NAME=${NOOK_NAME:-nook}
+NOOK_USER=${NOOK_USER:-$(id -un 1000 2>/dev/null || echo pi)}
+CATALOGUE=$NOOK_DATA/catalogue
+STACKS=$NOOK_DATA/stacks
+
+# ── http ──────────────────────────────────────────────────────────────────────
+
+respond() { # <status line> <body>
+  local status=$1 body=$2 length
+  length=$(printf '%s' "$body" | wc -c)
+  printf 'HTTP/1.1 %s\r\n' "$status"
+  printf 'Content-Type: application/json\r\n'
+  printf 'Content-Length: %s\r\n' "$length"
+  printf 'Cache-Control: no-store\r\n'
+  printf 'Connection: close\r\n\r\n'
+  printf '%s' "$body"
+}
+
+fail() { # <status line> <message>
+  respond "$1" "$(jq -nc --arg error "$2" '{ok: false, error: $error}')"
+  exit 0
+}
+
+# ── the catalogue, and what is actually running ───────────────────────────────
+
+running_stacks() {
+  docker compose ls --format json 2>/dev/null | jq -r '.[].Name' 2>/dev/null || true
+}
+
+# The index picked its own port at install time and recorded it; everything else
+# declares one in the catalogue.
+service_port() { # <name>
+  if [[ $1 == home ]]; then
+    sed -n 's/^HOME_PORT=//p' "$STACKS/home/.env" 2>/dev/null | head -n1
+    return 0
+  fi
+  jq -r '.port // empty' "$CATALOGUE/$1/nook.json" 2>/dev/null
+}
+
+catalogue_json() {
+  local running name port dir
+  running=$(running_stacks)
+
+  for dir in "$CATALOGUE"/*/; do
+    [[ -f $dir/nook.json ]] || continue
+    name=$(basename "$dir")
+    port=$(service_port "$name")
+    jq -c \
+      --arg name "$name" \
+      --arg port "$port" \
+      --argjson installed "$([[ -d $STACKS/$name ]] && echo true || echo false)" \
+      --argjson running "$(grep -qx "$name" <<<"$running" && echo true || echo false)" \
+      '{name: $name, summary: (.summary // ""), docs: (.docs // null),
+        port: (if $port == "" then null else ($port | tonumber) end),
+        installed: $installed, running: $running}' "$dir/nook.json"
+  done | jq -sc --arg box "$NOOK_NAME" '{ok: true, box: $box, services: .}'
+}
+
+# ── acting on one of them ─────────────────────────────────────────────────────
+
+# The environment every catalogue compose file is written against. The same
+# four names `nook install` writes from a laptop, written here instead so a box
+# can add a service with no laptop involved.
+write_env() { # <stack dir>
+  local ip tz home_port
+  ip=$(tailscale ip -4 2>/dev/null | head -n1)
+  tz=$(timedatectl show -p Timezone --value 2>/dev/null || echo UTC)
+  home_port=$(service_port home)
+  # Only when the index is not up yet: 80 is the address worth having, and it is
+  # decided once because a bookmark must not move under it.
+  if [[ -z $home_port ]]; then
+    if [[ -z $(ss -tlnH 'sport = :80' 2>/dev/null | head -n1) ]]; then home_port=80; else home_port=8880; fi
+  fi
+
+  cat >"$1/.env" <<ENV
+NOOK_DATA=$NOOK_DATA
+NOOK_TS_IP=$ip
+NOOK_HOST=$NOOK_NAME
+TZ=$tz
+HOME_PORT=$home_port
+NOOK_API_PORT=${NOOK_API_PORT:-8881}
+ENV
+}
+
+# Directories are made here rather than by the container: a bind mount whose
+# source does not exist is created by docker as root, and then the service
+# cannot write to it.
+make_dirs() { # <name>
+  local library
+  install -d -o "$NOOK_USER" -g "$NOOK_USER" "$NOOK_DATA/apps/$1"
+  library=$(jq -r '.library // empty' "$CATALOGUE/$1/nook.json" 2>/dev/null)
+  [[ -n $library ]] && install -d -o "$NOOK_USER" -g "$NOOK_USER" "$NOOK_DATA/$library"
+  return 0
+}
+
+compose() { # <name> <args…>
+  local name=$1
+  shift
+  docker compose -p "$name" --project-directory "$STACKS/$name" "$@"
+}
+
+do_install() { # <name>
+  local name=$1 file
+  local stack=$STACKS/$name
+  install -d -o "$NOOK_USER" -g "$NOOK_USER" "$stack"
+  # Everything but the catalogue entry's own metadata: a compose file, and any
+  # config file it mounts beside itself.
+  for file in "$CATALOGUE/$name"/*; do
+    [[ -f $file ]] || continue
+    [[ $(basename "$file") == nook.json ]] && continue
+    install -m 644 -o "$NOOK_USER" -g "$NOOK_USER" "$file" "$stack/"
+  done
+  make_dirs "$name"
+  write_env "$stack"
+  compose "$name" up -d
+}
+
+do_update() { # <name>
+  compose "$1" pull
+  compose "$1" up -d
+}
+
+# The containers and their images go; $NOOK_DATA/apps/<name> stays, because
+# "remove" should not be the same word as "delete everything I put in it".
+do_remove() { # <name>
+  compose "$1" down
+  rm -rf "${STACKS:?}/$1"
+}
+
+# ── routing ───────────────────────────────────────────────────────────────────
+
+# Everything that changes the box happens under this, so two browser tabs
+# pressing add at the same moment queue instead of racing docker.
+serialize() {
+  # /tmp rather than the data directory: the lock has to work on a box whose
+  # external disk is missing, which is exactly when someone is poking at this.
+  exec 9>"${TMPDIR:-/tmp}/nook-api.lock" 2>/dev/null || return 0
+  flock 9 2>/dev/null || true
+}
+
+act() { # <name> <install|update|remove>
+  local name=$1 action=$2 log status
+
+  [[ $name =~ ^[a-z0-9][a-z0-9._-]*$ ]] || fail "400 Bad Request" "that is not a service name"
+  [[ -d $CATALOGUE/$name ]] || fail "404 Not Found" "$name is not in this box's catalogue"
+
+  case $action in
+    install) [[ -d $STACKS/$name ]] && fail "409 Conflict" "$name is already installed" ;;
+    update | remove) [[ -d $STACKS/$name ]] || fail "409 Conflict" "$name is not installed" ;;
+  esac
+  # The page is served by the home stack. Removing it from the page removes the
+  # page, and the button that would put it back with it.
+  if [[ $name == home && $action == remove ]]; then
+    fail "409 Conflict" "home is the page you are looking at — remove it with: nook uninstall home"
+  fi
+
+  serialize
+  log=$("do_$action" "$name" 2>&1)
+  status=$?
+
+  # A pull is minutes of layer progress nobody needs; the tail is what says
+  # whether it worked.
+  log=$(printf '%s\n' "$log" | tail -n 24)
+  if ((status == 0)); then
+    respond "200 OK" "$(jq -nc --arg name "$name" --arg action "$action" --arg log "$log" \
+      '{ok: true, name: $name, action: $action, log: $log}')"
+  else
+    respond "500 Internal Server Error" "$(jq -nc --arg name "$name" --arg action "$action" --arg log "$log" \
+      '{ok: false, name: $name, action: $action, error: "docker refused", log: $log}')"
+  fi
+}
+
+# jq builds every answer here, so without it there is nothing to say but this.
+if ! command -v jq >/dev/null; then
+  printf 'HTTP/1.1 503 Service Unavailable\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n'
+  printf '{"ok":false,"error":"jq is not installed on this box"}'
+  exit 0
+fi
+command -v docker >/dev/null || fail "503 Service Unavailable" "docker is not installed on this box"
+[[ -d $CATALOGUE ]] || fail "503 Service Unavailable" "this box has no catalogue — re-run the boot script"
+
+# The request line, then the headers, which are read only to get them out of the
+# way. Nothing here needs a body: an action is a path, not a payload.
+IFS=$' \t\r' read -r method target _ || exit 0
+while IFS= read -r header; do
+  [[ -z ${header//$'\r'/} ]] && break
+done
+
+target=${target%%\?*}
+
+case "$method $target" in
+  "GET /health") respond "200 OK" '{"ok":true}' ;;
+  "GET /services" | "GET /services/") respond "200 OK" "$(catalogue_json)" ;;
+  "POST /services/"*/install) act "$(basename "$(dirname "${target#/services/}")")" install ;;
+  "POST /services/"*/update) act "$(basename "$(dirname "${target#/services/}")")" update ;;
+  "POST /services/"*/remove) act "$(basename "$(dirname "${target#/services/}")")" remove ;;
+  *) fail "404 Not Found" "no such endpoint" ;;
+esac

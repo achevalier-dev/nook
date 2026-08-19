@@ -48,17 +48,38 @@ service_env() {
 stack_dir() { echo "$NOOK_DATA/stacks/$1"; }
 
 push_stack() { # <name>
-  local name=$1 dir
+  local name=$1 dir file base
   dir=$(stack_dir "$name")
   remote "sudo install -d -o \$(id -u) -g \$(id -g) $dir"
-  remote "cat > $dir/compose.yaml" <"$(services_root)/$name/compose.yaml"
+
+  # The compose file and anything it mounts beside itself — an nginx template,
+  # a config fragment. Everything but the catalogue entry's own metadata, which
+  # describes the service to nook rather than to docker.
+  for file in "$(services_root)/$name"/*; do
+    [[ -f $file ]] || continue
+    base=$(basename "$file")
+    [[ $base == nook.json ]] && continue
+    remote "cat > $dir/$base" <"$file"
+  done
+
   remote "cat > $dir/.env" <<ENV
 NOOK_DATA=$NOOK_DATA
 NOOK_TS_IP=$NOOK_TS_IP
 NOOK_HOST=$NOOK_HOST
 TZ=$TZ
 HOME_PORT=$(home_port)
+NOOK_API_PORT=${NOOK_API_PORT:-8881}
 ENV
+}
+
+# The same catalogue, on the box. It is what lets the index page add a service
+# with nothing of yours involved: a box that cannot read a compose file cannot
+# install one. Small enough — a dozen directories of two files — that it goes
+# every time rather than being something to remember.
+push_catalogue() {
+  need rsync
+  remote "sudo install -d -o \$(id -u) -g \$(id -g) $NOOK_DATA/catalogue" || return 0
+  rsync -a --delete "$(services_root)/" "$NOOK_HOST:$NOOK_DATA/catalogue/" || true
 }
 
 # http://<box> with no port at all is the most memorable address there is, so
@@ -211,10 +232,15 @@ cmd_install() {
     [[ -n $library ]] && echo "  its library is $NOOK_DATA/$library — nook push puts things there"
   done
 
+  push_catalogue
+
   # The index goes up with the first service, so there is always one address
-  # worth bookmarking rather than a list of port numbers to remember.
-  if [[ $* != *home* ]] && ! grep -qx home <<<"$(running_services)"; then
-    log "adding the index page"
+  # worth bookmarking rather than a list of port numbers to remember. Its stack
+  # is refreshed every time rather than only on the first install: the page's
+  # nginx config gains things — the proxy the manage controls answer behind —
+  # and `compose up -d` recreates nothing when nothing changed.
+  if [[ $* != *home* ]]; then
+    grep -qx home <<<"$(running_services)" || log "adding the index page"
     push_stack home
     stack_compose home up -d >/dev/null 2>&1
   fi
@@ -238,6 +264,7 @@ cmd_uninstall() {
     echo "$name is gone. Its data is still in $NOOK_DATA/apps/$name —"
     echo "  nook ssh sudo rm -rf $NOOK_DATA/apps/$name   removes that too."
   done
+  push_catalogue
   write_home_page
 }
 

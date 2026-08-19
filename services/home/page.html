@@ -6,40 +6,40 @@
   /* A cream enamel dial with a red needle, and the services set below it like a
      contents page rather than a grid of cards. */
   :root {
-    /* Sand ground, bone dials, teal ink, vermilion needle. Cartographic rather
-       than vintage-automotive: the dials have to sit *on* something, and a
-       cream instrument on a cream page never lifts off it. */
-    --bg: #e5ddcd;       /* sand */
-    --face: #faf7f0;     /* the bone of the dial itself */
-    --ink: #16211f;      /* teal-black */
-    --dim: #5d6b66;
-    --faint: #9aa39c;
-    --rule: #cbc2ae;
-    --accent: #0f6466;   /* teal */
-    --red: #dc4726;      /* vermilion */
-    --deep: #9c3418;     /* burnt, for the redline */
-    --live: #1f7a5c;
+    /* A brushed champagne faceplate with white-lacquer dials inset into it,
+       lit from behind in amber. Swiss hairlines and Swiss restraint; the warmth
+       and the material come from the 1978 hi-fi it is bolted into. */
+    --plate: #d5d2ca;     /* brushed aluminium */
+    --plate-hi: #e6e3db;
+    --face: #f6f5f1;      /* white lacquer */
+    --ink: #16181c;       /* graphite */
+    --dim: #5a5d63;
+    --faint: #9b9ea3;
+    --rule: #b7b3aa;
+    --hair: #16181c;      /* hairlines are ink, never grey */
+    --amber: #c8871a;     /* the lamp behind the dial */
+    --amber-lit: #e8a83a;
+    --red: #a8271d;       /* one signal colour, used once */
+    --live: #3f7d4a;
   }
-  /* No dark variant on purpose: the thing being made is a bone dial on sand,
-     and inverting it makes a different object rather than the same one at
-     night. */
   * { box-sizing: border-box; }
   html { background: var(--bg); }
   body {
     margin: 0; min-height: 100vh;
     padding: clamp(2.5rem, 6vw, 4.5rem) 1.5rem 3rem;
-    background-color: var(--bg);
-    /* Graph paper at 7px, and a wash of the accent behind the cluster. Fixed,
-       so neither stops where the content does and leaves a seam. */
+    background-color: var(--plate);
+    /* Brushed, not textured: a fine vertical grain and a single soft highlight
+       across the top, the way rolled aluminium catches a room light. */
     background-image:
-      radial-gradient(40rem 22rem at 50% 14%, #0f646618, transparent 72%),
-      repeating-linear-gradient(0deg, #16211f0a 0 1px, transparent 1px 7px),
-      repeating-linear-gradient(90deg, #16211f0a 0 1px, transparent 1px 7px);
+      radial-gradient(52rem 34rem at 50% 8%, #ffffff5c, transparent 68%),
+      linear-gradient(180deg, var(--plate-hi), transparent 42%),
+      repeating-linear-gradient(90deg, #ffffff12 0 1px, #00000007 1px 3px);
     background-attachment: fixed;
     color: var(--ink);
-    font: 15px/1.6 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font: 14px/1.6 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
     -webkit-font-smoothing: antialiased;
   }
+
   main { max-width: 46rem; margin: 0 auto; }
 
   /* ── masthead ────────────────────────────────────────────────────────── */
@@ -47,10 +47,11 @@
   h1 {
     margin: 0; font-size: clamp(2.6rem, 7.5vw, 3.6rem); line-height: .95;
     /* A serif over a monospace body: the one typographic surprise here. */
-    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
-    font-weight: 600; letter-spacing: -.025em;
+    font-family: system-ui, "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-weight: 700; letter-spacing: -.045em;
   }
-  .meta { margin: .85rem 0 0; color: var(--dim); font-size: .78rem; }
+  .meta { margin: .9rem 0 0; color: var(--dim); font-size: .68rem;
+          letter-spacing: .14em; text-transform: uppercase; }
   .meta b { font-weight: 400; color: var(--ink); }
   .meta .sep { color: var(--faint); margin: 0 .5rem; }
   .lamp {
@@ -68,7 +69,7 @@
     padding: .5rem .85rem; border-radius: .3rem; cursor: pointer; white-space: nowrap;
     transition: color .18s, border-color .18s;
   }
-  button:hover { color: var(--accent); border-color: var(--accent); }
+  button:hover { color: var(--amber); border-color: var(--amber); }
   button:disabled { cursor: default; opacity: .6; }
 
   /* ── the cluster ─────────────────────────────────────────────────────── */
@@ -77,34 +78,37 @@
     gap: 1rem; margin: 2.5rem 0;
   }
   .g { text-align: center; }
-  .dial { position: relative; max-width: 10rem; margin: 0 auto; }
+  .dial { position: relative; max-width: 9.5rem; margin: 0 auto; }
+  /* Inset into the plate rather than laid on it: a bright edge below, a dark
+     one above, which is what a milled recess looks like. */
   .g svg { width: 100%; display: block;
-           filter: drop-shadow(0 2px 2px #16211f14) drop-shadow(0 6px 12px #16211f0f); }
-  .face { fill: var(--face); stroke: #16211f26; stroke-width: .8; }
-  .track { fill: none; stroke: var(--rule); stroke-width: 3.2; stroke-linecap: round; }
-  .redline { fill: none; stroke: var(--deep); stroke-width: 3.2; opacity: .38; stroke-linecap: butt; }
-  /* A wide, faint copy of the value arc under the real one — the halo a lit
-     needle throws on the ring of a real cluster. */
-  .bloom { fill: none; stroke: var(--accent); stroke-width: 9; opacity: .13; stroke-linecap: round; }
-  .bloom.hot { stroke: var(--red); }
-  .fill { fill: none; stroke: var(--accent); stroke-width: 3.2; stroke-linecap: round; transition: stroke .6s; }
+           filter: drop-shadow(0 1px 0 #ffffffcc) drop-shadow(0 -1px 0 #00000018); }
+  .face { fill: var(--face); stroke: #16181c33; stroke-width: .7; }
+  /* The lamp behind the dial. */
+  .backlight { fill: url(#lamp); }
+  .track { fill: none; stroke: #16181c24; stroke-width: 2.9; stroke-linecap: butt; }
+  .redline { fill: none; stroke: var(--red); stroke-width: 2.9; opacity: .6; stroke-linecap: butt; }
+  .bloom { fill: none; stroke: var(--amber-lit); stroke-width: 8; opacity: .2; stroke-linecap: round; }
+  .bloom.hot { stroke: var(--red); opacity: .22; }
+  .fill { fill: none; stroke: var(--amber); stroke-width: 2.9; stroke-linecap: butt; transition: stroke .6s; }
   .fill.hot { stroke: var(--red); }
-  .tick { stroke: var(--ink); stroke-width: .7; opacity: .18; stroke-linecap: round; }
-  .tick.major { stroke: var(--ink); stroke-width: 1.3; opacity: .42; }
-  .needle { filter: drop-shadow(0 0 1.5px #dc472644); }
-  /* Inside the dial, where a cluster puts its numerals. */
+  /* Hairlines: ink, thin, exact. Grey ticks are what make a dial look printed
+     rather than engraved. */
+  .tick { stroke: var(--hair); stroke-width: .6; opacity: .42; }
+  .tick.major { stroke-width: 1.25; opacity: .9; }
+  .needle { filter: drop-shadow(0 .5px .5px #00000030); }
   .read {
     position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-    font-size: 1.15rem; font-variant-numeric: tabular-nums; letter-spacing: -.03em;
+    font-size: 1.18rem; font-weight: 500; font-variant-numeric: tabular-nums; letter-spacing: -.03em;
     pointer-events: none;
   }
-  .read small { font-size: .62rem; color: var(--faint); letter-spacing: 0; margin-left: .12rem; align-self: center; }
-  .lbl { color: var(--faint); font-size: .6rem; letter-spacing: .2em; text-transform: uppercase; margin-top: .55rem; }
+  .read small { font-size: .58rem; color: var(--faint); letter-spacing: 0; margin-left: .12rem; align-self: center; }
+  .lbl { color: var(--dim); font-size: .56rem; letter-spacing: .26em; text-transform: uppercase; margin-top: .6rem; }
 
   hr { border: 0; border-top: 1px solid var(--rule); margin: 2rem 0; }
 
   /* ── services, set as a contents page ───────────────────────────────── */
-  h2 { font-size: .6rem; letter-spacing: .22em; text-transform: uppercase; color: var(--faint); margin: 0 0 1rem; font-weight: 400; }
+  h2 { font-size: .56rem; letter-spacing: .28em; text-transform: uppercase; color: var(--faint); margin: 0 0 1rem; font-weight: 400; }
   ol { list-style: none; padding: 0; margin: 0; }
   ol li { padding: .55rem 0; border-bottom: 1px solid var(--rule); }
   ol li:first-child { border-top: 1px solid var(--rule); }
@@ -118,17 +122,48 @@
   .pt { color: var(--dim); font-variant-numeric: tabular-nums; font-size: .85rem; }
   .go { color: var(--faint); transition: color .18s, transform .18s; }
   .what { margin: .15rem 0 .1rem 1.95rem; color: var(--faint); font-size: .78rem; }
-  .line:hover .nm { color: var(--accent); }
-  .line:hover .go { color: var(--accent); transform: translate(2px, -2px); }
+  .line:hover .nm { color: var(--amber); }
+  .line:hover .go { color: var(--amber); transform: translate(2px, -2px); }
   li.stopped { opacity: .4; }
   li.stopped .line { pointer-events: none; }
+  /* …but not its controls: a stopped service is exactly the one you want to
+     update or remove. */
+  li.stopped .ops { pointer-events: auto; }
   li.stopped .pt::after { content: " stopped"; color: var(--faint); }
   .empty { color: var(--dim); padding: 1rem 0; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }
-  .empty code { color: var(--accent); }
+  .empty code { color: var(--amber); }
+
+  /* ── manage ─────────────────────────────────────────────────────────────
+     The controls are set as marginalia rather than as buttons in a toolbar:
+     a contents page with a row of chrome above it stops being a contents page.
+     They appear only when the box says it can act on them. */
+  .ops { display: flex; gap: .1rem; margin-left: .3rem; opacity: 0; transition: opacity .18s; }
+  li:hover .ops, li:focus-within .ops, .ops.busy { opacity: 1; }
+  @media (hover: none) { .ops { opacity: 1; } }
+  .op {
+    font: inherit; font-size: .62rem; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--faint); background: none; border: 0; padding: .2rem .4rem;
+    cursor: pointer; border-radius: .2rem;
+  }
+  .op:hover { color: var(--amber); }
+  .op.danger:hover, .op.sure { color: var(--red); }
+  .op:disabled { cursor: default; opacity: .5; }
+  .op.sure { border: 1px solid var(--red); }
+  .note {
+    margin: .2rem 0 .1rem 1.95rem; font-size: .72rem; color: var(--dim);
+    white-space: pre-wrap; word-break: break-word;
+  }
+  .note.bad { color: var(--red); }
+  /* Anything the box could be running but is not. Dimmer than the contents
+     above it, because it is a menu rather than a list of what exists. */
+  #manage { margin-top: 2.25rem; }
+  #add .nm { font-weight: 400; color: var(--dim); }
+  #add li:hover .nm { color: var(--ink); }
+  .working { color: var(--amber); }
 
   footer { margin-top: 2.5rem; color: var(--faint); font-size: .72rem; display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
   footer a { color: var(--dim); text-decoration: none; border-bottom: 1px solid var(--rule); }
-  footer a:hover { color: var(--accent); }
+  footer a:hover { color: var(--amber); }
   @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 </style>
 
@@ -155,6 +190,14 @@
 
   <h2>services</h2>
   <ol id="list">{{ROWS}}</ol>
+
+  <!-- Filled in only when this box can act on its own services. A box booted
+       with --no-manage, or one whose nook is older than the manage controls,
+       simply never shows it. -->
+  <section id="manage" hidden>
+    <h2 id="addhead">add</h2>
+    <ol id="add"></ol>
+  </section>
 
   <footer>
     <span>kept by <a href="https://github.com/achevalier-dev/nook">nook</a></span>
@@ -194,18 +237,23 @@
            <!-- The needle fades out toward the pivot, so it floats rather than
                 being pinned by a hub. -->
            <linearGradient id="n${gi}" x1="0" y1="1" x2="0" y2="0">
-             <stop offset="0" stop-color="var(--red)" stop-opacity=".25"/>
-             <stop offset=".5" stop-color="var(--red)" stop-opacity=".8"/>
-             <stop offset="1" stop-color="var(--red)" stop-opacity="1"/>
+             <stop offset="0" stop-color="var(--ink)" stop-opacity=".35"/>
+             <stop offset=".5" stop-color="var(--ink)" stop-opacity=".95"/>
+             <stop offset="1" stop-color="var(--ink)" stop-opacity="1"/>
            </linearGradient>
+           <radialGradient id="lamp" cx=".5" cy=".5" r=".5">
+             <stop offset=".45" stop-color="#e8a83a" stop-opacity="0"/>
+             <stop offset="1" stop-color="#c8871a" stop-opacity=".16"/>
+           </radialGradient>
          </defs>
          <circle class="face" cx="50" cy="50" r="43"/>
+         <circle class="backlight" cx="50" cy="50" r="42.5"/>
          <path class="track" d="${arc(A0, A0 + SWEEP, R)}"/>
          <path class="redline" d="${arc(A0 + SWEEP * redline, A0 + SWEEP, R)}"/>
          <path class="bloom" d="${arc(A0, A0 + SWEEP, R)}" stroke-dasharray="0 ${LEN.toFixed(1)}"/>
          <path class="fill" d="${arc(A0, A0 + SWEEP, R)}" stroke-dasharray="0 ${LEN.toFixed(1)}"/>
          ${ticks}
-         <path class="needle" d="M48.95 34.5 L49.6 21.2 L50.4 21.2 L51.05 34.5 Z"
+         <path class="needle" d="M48.8 34.5 L49.55 20.8 L50.45 20.8 L51.2 34.5 Z"
                fill="url(#n${gi})" transform="rotate(225 50 50)"/>
        </svg>`);
   });
@@ -357,6 +405,148 @@
   setInterval(read, 20000);
   // Coming back to a tab should not show a minute-old temperature.
   document.addEventListener('visibilitychange', () => !document.hidden && read());
+
+  // ── manage ─────────────────────────────────────────────────────────────
+  // The page asks the box what it could be running and what it is running, and
+  // offers add, update and remove for each. Behind /api/ is nook-api, one bash
+  // process per request started by systemd, which will only act on a name that
+  // exists in this box's catalogue.
+  //
+  // A box that cannot do any of this — booted with --no-manage, or older than
+  // this page — answers nothing at all, and then the rows rendered into the
+  // HTML by `nook install` stand as they are. That is the read-only page, and
+  // it is a complete page.
+
+  const manage = $('manage');
+  const listEl = $('list');
+  const addEl = $('add');
+  let catalogue = null;
+
+  // The address a service answers on, from where the page itself is being
+  // read: http://box:port when it is plain, https://box.tailnet:port once
+  // `nook serve` is on. Both are what the box publishes; neither is stored.
+  const addressOf = port => `${location.protocol}//${location.hostname}:${port}`;
+
+  const el = (tag, cls, text) => {
+    const n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text !== undefined) n.textContent = text;
+    return n;
+  };
+
+  async function call(name, action) {
+    const r = await fetch(`api/services/${encodeURIComponent(name)}/${action}`, {
+      method: 'POST', cache: 'no-store',
+    });
+    let body = {};
+    try { body = await r.json(); } catch {}
+    if (!r.ok || body.ok === false) throw new Error(body.error || `the box refused (${r.status})`);
+    return body;
+  }
+
+  // One button, three states: idle, armed (remove only, so a misclick costs
+  // nothing), and working. The row says what happened underneath itself rather
+  // than in an alert, because an alert is a thing to dismiss before reading.
+  function button(li, label, danger, run) {
+    const b = el('button', 'op' + (danger ? ' danger' : ''), label);
+    let armed = false, timer = 0;
+
+    b.addEventListener('click', async () => {
+      if (danger && !armed) {
+        armed = true;
+        b.textContent = 'sure?';
+        b.classList.add('sure');
+        timer = setTimeout(() => { armed = false; b.textContent = label; b.classList.remove('sure'); }, 5000);
+        return;
+      }
+      clearTimeout(timer);
+      armed = false;
+      b.classList.remove('sure');
+
+      const ops = b.parentElement;
+      const note = li.querySelector('.note') || li.appendChild(el('p', 'note'));
+      note.classList.remove('bad');
+      note.classList.add('working');
+      note.textContent = label + 'ing… this pulls images over the box\'s connection, so it can take a few minutes';
+      ops.classList.add('busy');
+      for (const other of ops.querySelectorAll('.op')) other.disabled = true;
+
+      try {
+        await run();
+        await load();
+        read();
+      } catch (e) {
+        note.classList.remove('working');
+        note.classList.add('bad');
+        note.textContent = String(e.message || e);
+        for (const other of ops.querySelectorAll('.op')) other.disabled = false;
+        ops.classList.remove('busy');
+      }
+    });
+    return b;
+  }
+
+  function row(s, n) {
+    const li = el('li');
+    li.dataset.name = s.name;
+    if (s.installed && !s.running) li.classList.add('stopped');
+
+    const line = el(s.installed && s.port ? 'a' : 'div', 'line');
+    if (line.tagName === 'A') line.href = addressOf(s.port);
+    line.appendChild(el('span', 'num', String(n).padStart(2, '0')));
+    line.appendChild(el('span', 'nm', s.name));
+    line.appendChild(el('span', 'dots'));
+    line.appendChild(el('span', 'pt', s.installed ? String(s.port ?? '') : ''));
+
+    const ops = el('div', 'ops');
+    if (s.installed) {
+      ops.appendChild(button(li, 'update', false, () => call(s.name, 'update')));
+      // The index page is what you are looking at; taking it away from inside
+      // itself is not something to offer behind a two-click confirm.
+      if (s.name !== 'home') ops.appendChild(button(li, 'remove', true, () => call(s.name, 'remove')));
+    } else {
+      ops.appendChild(button(li, 'add', false, () => call(s.name, 'install')));
+    }
+
+    li.appendChild(line);
+    if (s.installed && s.port) line.appendChild(el('span', 'go', '↗'));
+    line.appendChild(ops);
+    if (s.summary) li.appendChild(el('p', 'what', s.summary));
+    return li;
+  }
+
+  async function load() {
+    let data;
+    try {
+      data = await (await fetch('api/services?t=' + Date.now(), { cache: 'no-store' })).json();
+      if (!data || !Array.isArray(data.services)) throw new Error('no catalogue');
+    } catch {
+      // Read-only box. Whatever `nook install` rendered into the page stays.
+      manage.hidden = true;
+      return;
+    }
+
+    catalogue = data.services;
+    const installed = catalogue.filter(s => s.installed && s.name !== 'home');
+    const rest = catalogue.filter(s => !s.installed);
+    const home = catalogue.find(s => s.name === 'home' && s.installed);
+
+    listEl.textContent = '';
+    installed.forEach((s, i) => listEl.appendChild(row(s, i + 1)));
+    if (home) listEl.appendChild(row(home, installed.length + 1));
+    if (!installed.length && !home) {
+      const li = el('li', 'empty');
+      li.append('Nothing installed yet — add one below.');
+      listEl.appendChild(li);
+    }
+
+    addEl.textContent = '';
+    rest.forEach((s, i) => addEl.appendChild(row(s, i + 1)));
+    $('addhead').textContent = rest.length ? 'add' : 'everything in the catalogue is here';
+    manage.hidden = false;
+  }
+
+  load();
 
   // ── share ──────────────────────────────────────────────────────────────
   // The page into a PNG, in the browser, with no library and nothing fetched.
