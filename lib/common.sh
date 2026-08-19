@@ -122,7 +122,11 @@ remote() { ssh -o BatchMode=yes "$NOOK_HOST" "$@"; }
 
 # Where a device is mounted, or nothing. Asked rather than remembered — udisks
 # picks the path and it changes with the label.
-mounted_at() { findmnt -nro TARGET --source "$1" 2>/dev/null | head -n1; }
+# findmnt exits non-zero when the device is not mounted, which is an answer and
+# not a failure — without the `|| true` that status takes the caller down with
+# it under `set -e`, and an attached-but-unmounted drive is exactly the state
+# `nook eject` exists to clear.
+mounted_at() { findmnt -nro TARGET --source "$1" 2>/dev/null | head -n1 || true; }
 
 # One marked block in ~/.ssh/config covering every adopted nook, rewritten
 # whenever the set changes. Per-nook blocks would leave a Host entry behind for
