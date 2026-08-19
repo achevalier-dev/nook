@@ -1,1 +1,1 @@
-{"name": "openspeedtest", "summary": "HTML5 Network Speed Test Server", "port": 3005, "category": "tools"}
+{"name": "openspeedtest", "summary": "HTML5 Network Speed Test Server", "port": 3004, "category": "tools", "source": "casaos"}

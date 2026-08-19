@@ -2,7 +2,7 @@ services:
   label-studio:
     image: heartexlabs/label-studio:1.23.0
     restart: unless-stopped
-    ports: ["${NOOK_TS_IP}:3082:8080"]
+    ports: ["${NOOK_TS_IP}:3081:8080"]
     volumes:
       - ${NOOK_DATA}/apps/label-studio/data:/label-studio/data
     environment:

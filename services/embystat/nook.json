@@ -1,1 +1,1 @@
-{"name": "embystat", "summary": "Calculate all kinds of statistics from your (local) Emby or Jellyfin server", "port": 6555, "category": "media"}
+{"name": "embystat", "summary": "Calculate all kinds of statistics from your (local) Emby or Jellyfin server", "port": 6555, "category": "media", "source": "casaos"}

@@ -1,1 +1,1 @@
-{"name": "tautulli", "summary": "Monitor your Plex Media Server and much more", "port": 8181, "category": "media", "repo": "https://tautulli.com"}
+{"name": "tautulli", "summary": "Monitor your Plex Media Server and much more", "port": 8181, "category": "media", "source": "casaos", "repo": "https://tautulli.com"}

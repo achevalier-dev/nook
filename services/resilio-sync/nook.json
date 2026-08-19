@@ -1,1 +1,1 @@
-{"name": "resilio-sync", "summary": "Unleash the power of seamless file synchronization", "port": 8891, "category": "documents", "repo": "https://www.resilio.com/sync/"}
+{"name": "resilio-sync", "summary": "Unleash the power of seamless file synchronization", "port": 8889, "category": "documents", "source": "casaos", "repo": "https://www.resilio.com/sync/"}

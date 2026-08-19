@@ -1,1 +1,1 @@
-{"name": "ombi", "summary": "Friendly media request tool, automatically syncs with your media servers!", "port": 3579, "category": "media", "repo": "https://ombi.io"}
+{"name": "ombi", "summary": "Friendly media request tool, automatically syncs with your media servers!", "port": 3579, "category": "media", "source": "casaos", "repo": "https://ombi.io"}

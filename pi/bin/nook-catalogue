@@ -55,9 +55,9 @@ after=$(names "$DEST")
 icons=$NOOK_DATA/www/icons
 mkdir -p "$icons"
 find "$icons" -name '*.svg' -delete 2>/dev/null || true
-for svg in "$DEST"/*/icon.svg; do
-  [[ -f $svg ]] || continue
-  cp "$svg" "$icons/$(basename "$(dirname "$svg")").svg"
+for art in "$DEST"/*/icon.*; do
+  [[ -f $art ]] || continue
+  cp "$art" "$icons/$(basename "$(dirname "$art")").${art##*.}"
 done
 chown -R "$NOOK_USER:$NOOK_USER" "$icons" 2>/dev/null || true
 

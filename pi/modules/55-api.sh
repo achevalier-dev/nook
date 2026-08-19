@@ -61,10 +61,10 @@ sync_catalogue
 # Publish the icons that came with it, so the page has them before the daily
 # catalogue timer first fires.
 install -d -o "$NOOK_USER" -g "$NOOK_USER" "$NOOK_DATA/www/icons"
-for svg in "$NOOK_DATA/catalogue"/*/icon.svg; do
-  [[ -f $svg ]] || continue
+for art in "$NOOK_DATA/catalogue"/*/icon.*; do
+  [[ -f $art ]] || continue
   install -m 644 -o "$NOOK_USER" -g "$NOOK_USER" \
-    "$svg" "$NOOK_DATA/www/icons/$(basename "$(dirname "$svg")").svg"
+    "$art" "$NOOK_DATA/www/icons/$(basename "$(dirname "$art")").${art##*.}"
 done
 
 # Accept=yes means one instance of the service per connection, with the socket

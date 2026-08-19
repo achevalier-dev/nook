@@ -745,7 +745,7 @@
     if (s.icon) {
       const img = document.createElement('img');
       img.className = 'mono art';
-      img.src = `icons/${encodeURIComponent(s.name)}.svg`;
+      img.src = `icons/${encodeURIComponent(s.name)}.${s.icon}`;
       img.alt = '';
       img.loading = 'lazy';
       img.addEventListener('error', () => img.replaceWith(el('span', 'mono', s.name[0].toUpperCase())));

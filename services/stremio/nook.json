@@ -1,1 +1,1 @@
-{"name": "stremio", "summary": "A modern media center that gives you the freedom to watch everything you want", "port": 8102, "category": "media", "repo": "https://www.stremio.com"}
+{"name": "stremio", "summary": "A modern media center that gives you the freedom to watch everything you want", "port": 8100, "category": "media", "source": "casaos", "repo": "https://www.stremio.com"}

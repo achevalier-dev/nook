@@ -1,21 +1,14 @@
-<svg id="Layer_1" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="52.42 4.25 407.17 504.6">
-  <defs>
-    <style>
-      .cls-1 {
-        fill: #fff;
-      }
-
-      .cls-2 {
-        fill: #e95028;
-      }
-
-      .cls-3 {
-        fill: #5c5c5c;
-      }
-    </style>
-  </defs>
-  <path class="cls-2" d="M224.68,278.3h62.64v215.55c0,8.28-6.72,15-15,15h-32.64c-8.28,0-15-6.72-15-15v-215.55Z"/>
-  <path class="cls-1" d="M224.68,231.32h62.64v46.98h-62.64v-46.98Z"/>
-  <rect class="cls-3" x="52.42" y="4.25" width="407.16" height="52.2" rx="15" ry="15"/>
-  <path class="cls-3" d="M224.68,54.71h62.64v176.9h-62.64V54.71Z"/>
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect width="256" height="256" fill="white"/>
+<g clip-path="url(#clip0_1251_8982)">
+<path d="M115.169 136.92H139.997V222.354C139.997 225.636 137.333 228.3 134.051 228.3H121.114C117.833 228.3 115.169 225.636 115.169 222.354V136.92Z" fill="#E95028"/>
+<path d="M115.169 118.3H139.997V136.921H115.169V118.3Z" fill="white"/>
+<path d="M202.327 28.2998H52.8386C49.5551 28.2998 46.8933 30.9616 46.8933 34.2451V43.0442C46.8933 46.3277 49.5551 48.9895 52.8386 48.9895H202.327C205.611 48.9895 208.273 46.3277 208.273 43.0442V34.2451C208.273 30.9616 205.611 28.2998 202.327 28.2998Z" fill="#5C5C5C"/>
+<path d="M115.169 48.2998H139.997V118.415H115.169V48.2998Z" fill="#5C5C5C"/>
+</g>
+<defs>
+<clipPath id="clip0_1251_8982">
+<rect width="161.383" height="200" fill="white" transform="translate(46.8933 28.2998)"/>
+</clipPath>
+</defs>
 </svg>

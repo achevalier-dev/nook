@@ -1,1 +1,1 @@
-{"name": "open-webui-ollama", "summary": "User-friendly WebUI for LLMs (Formerly Ollama WebUI)", "port": 3050, "category": "tools", "repo": "https://openwebui.com"}
+{"name": "open-webui-ollama", "summary": "User-friendly WebUI for LLMs (Formerly Ollama WebUI)", "port": 3050, "category": "tools", "source": "casaos", "repo": "https://openwebui.com"}

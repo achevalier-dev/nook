@@ -1,1 +1,1 @@
-{"name": "downtify", "summary": "Download Spotify music with album art and metadata", "port": 8582, "category": "media", "repo": "https://downtify.henriquesebastiao.com"}
+{"name": "downtify", "summary": "Download Spotify music with album art and metadata", "port": 8582, "category": "media", "source": "casaos", "repo": "https://downtify.henriquesebastiao.com"}

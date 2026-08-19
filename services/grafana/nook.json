@@ -1,1 +1,1 @@
-{"name": "grafana", "summary": "A complete observability stack that allows you to monitor and analyze metrics, logs and\u2026", "port": 3003, "category": "dev", "repo": "https://grafana.com/"}
+{"name": "grafana", "summary": "A complete observability stack that allows you to monitor and analyze metrics, logs and\u2026", "port": 3003, "category": "dev", "source": "casaos", "repo": "https://grafana.com/"}

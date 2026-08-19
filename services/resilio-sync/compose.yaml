@@ -2,7 +2,7 @@ services:
   resilio-sync:
     image: linuxserver/resilio-sync:3.1.2
     restart: unless-stopped
-    ports: ["${NOOK_TS_IP}:8891:8888"]
+    ports: ["${NOOK_TS_IP}:8889:8888"]
     volumes:
       - ${NOOK_DATA}/apps/resilio-sync/data:/sync
       - ${NOOK_DATA}/apps/resilio-sync/config:/config

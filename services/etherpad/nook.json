@@ -1,1 +1,1 @@
-{"name": "etherpad", "summary": "Real-time collaborative document editor", "port": 9001, "category": "documents", "repo": "https://etherpad.org/"}
+{"name": "etherpad", "summary": "Real-time collaborative document editor", "port": 9001, "category": "documents", "source": "casaos", "repo": "https://etherpad.org/"}

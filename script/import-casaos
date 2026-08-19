@@ -30,6 +30,19 @@ KEEP = {
     "home-assistant", "n8n", "actual", "uptime-kuma", "dockge",
 }
 
+# Things that cannot work here, or that would work badly enough to be a lie.
+# A catalogue is a set of promises; an entry that needs hardware this box does
+# not have, or a port nook will not bind, is a broken one.
+REJECT = re.compile(
+    r"nvidia|cuda|-gpu\b"                     # wants a GPU nobody has in a cupboard
+    r"|^(mongodb|mysql|mariadb|postgres|redis|influxdb)"  # a database with no interface
+    r"|stable-diffusion|index-tts|^hermes$"    # wants a GPU, or is an agent not a service
+    r"|^icewhale-"                             # that vendor's own builds
+    r"|^syncthing$"                            # ruled out: nook syncs Obsidian through git
+    r"|^(anaconda3|dsh-harness|gateway-go|virt-manager)",  # vendor or desktop-only
+    re.I,
+)
+
 # CasaOS' categories are theirs; these are ours.
 CATEGORY = {
     "media": "media", "Media": "media", "Entertainment": "media",
@@ -54,6 +67,12 @@ def clean(text, limit=88):
     return text[:1].upper() + text[1:] if text else ""
 
 
+def svcs_image(doc):
+    for svc in (doc.get("services") or {}).values():
+        return svc.get("image") or ""
+    return ""
+
+
 def pick_url(meta):
     """The upstream project, from whichever field this app happens to use."""
     for key in ("project_url", "index", "website"):
@@ -73,6 +92,19 @@ def main(store, write):
     if not apps:
         sys.exit(f"no apps under {store}")
 
+    # Replace exactly what a previous import wrote, and nothing curated.
+    if write:
+        gone = 0
+        for d in SERVICES.iterdir():
+            m = d / "nook.json"
+            if m.is_file() and json.loads(m.read_text()).get("source") == "casaos":
+                for f in d.iterdir():
+                    f.unlink()
+                d.rmdir()
+                gone += 1
+        if gone:
+            print(f"replacing {gone} previously imported services")
+
     taken, images = set(), set()
     for d in SERVICES.iterdir():
         m, c = d / "nook.json", d / "compose.yaml"
@@ -85,7 +117,7 @@ def main(store, write):
                 if line.strip().startswith("image:"):
                     images.add(line.split("image:", 1)[1].strip().split(":")[0])
 
-    rows, skipped = [], {"multi": 0, "noport": 0, "kept": 0, "notagline": 0, "clash": 0, "dupe": 0}
+    rows, skipped = [], {"multi": 0, "noport": 0, "kept": 0, "notagline": 0, "clash": 0, "dupe": 0, "rejected": 0, "needsroot": 0}
 
     for f in apps:
         try:
@@ -95,6 +127,9 @@ def main(store, write):
         name = (doc.get("name") or f.parent.name).lower()
         if name in KEEP or (SERVICES / name).exists():
             skipped["kept"] += 1
+            continue
+        if REJECT.search(name) or REJECT.search(str(svcs_image(doc))):
+            skipped["rejected"] += 1
             continue
 
         svcs = doc.get("services") or {}
@@ -129,6 +164,18 @@ def main(store, write):
             break
         if not host or host < 1024:
             skipped["noport"] += 1
+            continue
+
+        # An app whose other ports are privileged needs them — Pi-hole without
+        # 53 is a DNS server that does not answer DNS. Shipping it as installable
+        # would be worse than leaving it out.
+        others = [
+            int(str(q.get("published")))
+            for q in (svc.get("ports") or [])
+            if isinstance(q, dict) and str(q.get("published")) != str(host)
+        ]
+        if any(o < 1024 for o in others):
+            skipped["needsroot"] += 1
             continue
         while host in taken:
             host += 1
@@ -171,9 +218,22 @@ def main(store, write):
             print(" ", r["name"], r["host"], r["image"], "—", r["summary"])
         return
 
+    import urllib.request
+
     for r in rows:
         d = SERVICES / r["name"]
         d.mkdir(exist_ok=True)
+
+        # Vendored like the rest: the page has to render with no route out.
+        if r["icon"] and not any(d.glob("icon.*")):
+            ext = ".svg" if r["icon"].lower().endswith(".svg") else ".png"
+            try:
+                with urllib.request.urlopen(r["icon"], timeout=20) as fh:
+                    data = fh.read()
+                if len(data) < 400_000:
+                    (d / f"icon{ext}").write_bytes(data)
+            except Exception:
+                pass
         lines = [
             "services:",
             f"  {r['service']}:",
@@ -188,7 +248,7 @@ def main(store, write):
         (d / "compose.yaml").write_text("\n".join(lines))
 
         manifest = {"name": r["name"], "summary": r["summary"],
-                    "port": r["host"], "category": r["category"]}
+                    "port": r["host"], "category": r["category"], "source": "casaos"}
         if r["repo"]:
             manifest["repo"] = r["repo"]
         (d / "nook.json").write_text(json.dumps(manifest) + "\n")

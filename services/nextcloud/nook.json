@@ -1,1 +1,1 @@
-{"name": "nextcloud", "summary": "Content collaboration platform", "port": 10081, "category": "documents", "repo": "https://nextcloud.com"}
+{"name": "nextcloud", "summary": "Content collaboration platform", "port": 10081, "category": "documents", "source": "casaos", "repo": "https://nextcloud.com"}

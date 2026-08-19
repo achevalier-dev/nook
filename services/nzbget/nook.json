@@ -1,1 +1,1 @@
-{"name": "nzbget", "summary": "Efficient Usenet downloader", "port": 6789, "category": "media", "repo": "https://nzbget.com"}
+{"name": "nzbget", "summary": "Efficient Usenet downloader", "port": 6789, "category": "media", "source": "casaos", "repo": "https://nzbget.com"}

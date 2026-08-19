@@ -1,1 +1,1 @@
-{"name": "cloudbeaver", "summary": "Cloud Database Manager", "port": 8978, "category": "dev", "repo": "https://dbeaver.com/download/cloudbeaver/"}
+{"name": "cloudbeaver", "summary": "Cloud Database Manager", "port": 8978, "category": "dev", "source": "casaos", "repo": "https://dbeaver.com/download/cloudbeaver/"}

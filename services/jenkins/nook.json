@@ -1,1 +1,1 @@
-{"name": "jenkins", "summary": "Jenkins Continuous Integration and Delivery server", "port": 8080, "category": "dev", "repo": "https://www.jenkins.io/"}
+{"name": "jenkins", "summary": "Jenkins Continuous Integration and Delivery server", "port": 8080, "category": "dev", "source": "casaos", "repo": "https://www.jenkins.io/"}

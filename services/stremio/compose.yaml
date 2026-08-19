@@ -2,7 +2,7 @@ services:
   stremio:
     image: tsaridas/stremio-docker:v1.3.4
     restart: unless-stopped
-    ports: ["${NOOK_TS_IP}:8102:8080"]
+    ports: ["${NOOK_TS_IP}:8100:8080"]
     volumes:
       - ${NOOK_DATA}/apps/stremio/config:/root/.stremio-server
     environment:

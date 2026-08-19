@@ -2,7 +2,7 @@ services:
   holoplay:
     image: spout8301/holoplay:1.12.3
     restart: unless-stopped
-    ports: ["${NOOK_TS_IP}:3004:3000"]
+    ports: ["${NOOK_TS_IP}:3002:3000"]
     volumes:
       - ${NOOK_DATA}/apps/holoplay:/config
     environment:

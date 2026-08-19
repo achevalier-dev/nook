@@ -79,10 +79,11 @@ catalogue_json() {
       --arg port "$port" \
       --argjson installed "$([[ -d $STACKS/$name ]] && echo true || echo false)" \
       --argjson running "$(grep -qx "$name" <<<"$running" && echo true || echo false)" \
-      --argjson icon "$([[ -f $dir/icon.svg ]] && echo true || echo false)" \
+      --arg icon "$(for e in svg png; do [[ -f $dir/icon.$e ]] && echo "$e" && break; done)" \
       '{name: $name, summary: (.summary // ""), docs: (.docs // null),
         category: (.category // "other"),
-        repo: (.repo // null), stars: (.stars // null), icon: $icon,
+        repo: (.repo // null), stars: (.stars // null),
+        icon: (if $icon == "" then null else $icon end),
         port: (if $port == "" then null else ($port | tonumber) end),
         installed: $installed, running: $running}' "$dir/nook.json"
   done | jq -sc --arg box "$NOOK_NAME" '{ok: true, box: $box, services: .}'

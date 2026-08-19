@@ -1,1 +1,1 @@
-{"name": "netdata", "summary": "Real-time Performance Monitoring", "port": 19999, "category": "documents", "repo": "https://www.netdata.cloud"}
+{"name": "netdata", "summary": "Real-time Performance Monitoring", "port": 19999, "category": "documents", "source": "casaos", "repo": "https://www.netdata.cloud"}
