@@ -66,9 +66,13 @@ are edited through `replace_block`, between markers, never appended to blindly.
 ## Run & test
 
 ```bash
-./script/check                        # syntax, shellcheck, json, four behaviour tests
+./script/check                        # syntax, shellcheck, json, five behaviour tests
 NOOK_HOME=/tmp/nook-test ./bin/nook status
 ```
+
+The lint pass runs shellcheck through Docker when it is not installed locally,
+so CI cannot fail on something that passed here. Run `./script/check` before
+pushing — the whole suite needs no box, no network and no credentials.
 
 `script/check` is everything CI runs and needs no Pi, no network and no
 credentials: the behaviour tests stub `remote`, `sudo` and the block device.

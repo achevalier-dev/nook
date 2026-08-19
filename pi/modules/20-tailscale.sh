@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # 20-tailscale — reachable from anywhere, with nothing secret to copy.
 #
 # No auth key on purpose. `tailscale up` prints a URL and a QR code; you open it

@@ -14,7 +14,7 @@ transport=${NOOK_TRANSPORT:-none}
 port=$([[ $transport == iscsi ]] && echo 3260 || echo 10809)
 
 temp=$(awk '{ printf "%.1f", $1 / 1000 }' /sys/class/thermal/thermal_zone0/temp 2>/dev/null || echo null)
-read -r _ size used avail pct _ < <(df -B1 --output=source,size,used,avail,pcent "$data" 2>/dev/null | tail -n1)
+read -r _ size used avail _ < <(df -B1 --output=source,size,used,avail,pcent "$data" 2>/dev/null | tail -n1)
 containers=$(docker ps -q 2>/dev/null | wc -l)
 attached=$(ss -Htn state established "sport = :$port" 2>/dev/null | wc -l)
 

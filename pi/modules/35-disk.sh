@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # 35-disk — the network flash drive.
 #
 # A disk image on the external drive, exported as a block device so your laptop

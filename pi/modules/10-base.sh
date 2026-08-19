@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # 10-base — hostname, packages, and the housekeeping that keeps a headless box
 # from rotting: unattended security updates and a clock that survives a reboot.
 #

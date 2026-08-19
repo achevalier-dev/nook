@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # 50-shares — Samba over $NOOK_DATA/files, for the devices that cannot do SFTP.
 #
 # Off unless --shares. Your own laptop does not need this: it gets the same

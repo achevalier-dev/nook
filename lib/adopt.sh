@@ -39,7 +39,7 @@ adopt_find_user() {
   local host=$1 user opts
   mapfile -t opts < <(adopt_ssh_opts "$host")
   while read -r user; do
-    if ssh "${opts[@]}" -l "$user" "$host" true 2>/dev/null; then
+    if ssh -n "${opts[@]}" -l "$user" "$host" true 2>/dev/null; then
       printf '%s\n' "$user"
       return 0
     fi
@@ -50,13 +50,14 @@ adopt_find_user() {
 # Every online machine in the tailnet that answers with a nook config. Cheap
 # enough to just do: one SSH probe per online peer, eight seconds at worst.
 adopt_discover() {
-  local host user found=0
+  local host user opts found=0
   command -v tailscale >/dev/null || return 1
 
   while read -r host; do
     [[ -n $host ]] || continue
     user=$(adopt_find_user "$host") || continue
-    ssh $(adopt_ssh_opts "$host") -l "$user" "$host" test -f /etc/nook.conf 2>/dev/null || continue
+    mapfile -t opts < <(adopt_ssh_opts "$host")
+    ssh -n "${opts[@]}" -l "$user" "$host" test -f /etc/nook.conf 2>/dev/null || continue
     printf '%s@%s\n' "$user" "$host"
     found=1
   done < <(tailscale status --json 2>/dev/null |
@@ -114,7 +115,7 @@ cmd_adopt() {
   if [[ -z $user ]]; then
     user=$(adopt_find_user "$host") || unreachable "$host" ""
     [[ $user == "$(id -un)" ]] || log "signing in as $user"
-  elif ! ssh "${opts[@]}" -l "$user" "$host" true 2>/dev/null; then
+  elif ! ssh -n "${opts[@]}" -l "$user" "$host" true 2>/dev/null; then
     unreachable "$host" "$user"
   fi
 
@@ -186,7 +187,7 @@ nothing_found() {
     tailscale status --json | jq -r '.Peer[]? | select(.Online) | "    " + .HostName' >&2
     echo >&2
     echo "  On the one you want, run:" >&2
-    echo "    curl -fsSL '"$BOOT_URL"' | bash" >&2
+    echo "    curl -fsSL $BOOT_URL | bash" >&2
     echo "  or from here, if it already takes SSH:  nook boot <host>" >&2
   fi
   exit 1

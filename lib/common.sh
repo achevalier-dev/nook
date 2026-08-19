@@ -89,12 +89,14 @@ load_config() {
   NOOK_DATA=${NOOK_DATA:-/mnt/nook}
   NOOK_TRANSPORT=${NOOK_TRANSPORT:-none}
   NOOK_IQN_BASE=${NOOK_IQN_BASE:-iqn.2026-08.dev.nook}
+  # shellcheck disable=SC2034  # read by lib/adopt.sh and lib/status.sh
   NOOK_INITIATOR_IQN="$NOOK_IQN_BASE:$(hostname)"
 
   # Everything below is per-nook by construction. Two boxes mounted at the same
   # path, or two drives carrying the same label, collide in ways that look like
   # the wrong machine answering.
   NOOK_MOUNT=${NOOK_MOUNT:-$HOME/nook/$NOOK}
+  # shellcheck disable=SC2034  # read by lib/containers.sh
   NOOK_CONTEXT="nook-$NOOK"
   # ext4 labels stop at 16 characters, and a truncated label still has to be
   # unique enough to tell two boxes apart at a glance.

@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # 40-docker — Docker, with its data on the external disk.
 #
 # The point is `nook up`: you keep compose files on your laptop and Docker runs

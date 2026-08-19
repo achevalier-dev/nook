@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # 30-storage — mount the external disk at $NOOK_DATA, by UUID, and lay out the
 # directories everything else expects.
 #
@@ -8,8 +9,8 @@ mkdir -p "$NOOK_DATA"
 
 disk=$(lsblk -dpno NAME,TRAN 2>/dev/null | awk '$2 == "usb" { print $1; exit }' || true)
 
-# Read by 35-disk: the network drive is a big image file, and the system disk is
-# the wrong place for one.
+# Read by 35-disk, which sizes the drive differently depending on the answer.
+# shellcheck disable=SC2034
 NOOK_HAS_EXTERNAL=0
 
 # Not a warning: a box without an external disk is a perfectly good nook, it
@@ -55,6 +56,7 @@ fi
 
 # A disk that failed to mount leaves the directory on the system disk, whatever
 # the probe said.
+# shellcheck disable=SC2034  # read by 35-disk
 mountpoint -q "$NOOK_DATA" || NOOK_HAS_EXTERNAL=0
 
 # files/  is the shared lane: the FUSE mount and Samba both see it, and so do

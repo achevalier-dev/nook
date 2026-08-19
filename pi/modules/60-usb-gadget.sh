@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # 60-usb-gadget — the same disk image over a USB-C cable, for when there is no
 # network at all.
 #

@@ -180,6 +180,7 @@ esac
 NOOK="$HOME/.local/bin/nook"
 if [[ $DRY == 0 && -x $NOOK ]] && signed_in; then
   step "Looking for your nook"
+  # shellcheck disable=SC2034  # read by the summary at the end
   if "$NOOK" adopt; then
     adopted=1
   else

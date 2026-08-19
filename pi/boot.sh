@@ -196,7 +196,6 @@ fi
 # The user who invoked sudo owns the data directory and the docker group —
 # root owning everything is how a home server ends up needing sudo to read a PDF.
 NOOK_USER=${SUDO_USER:-$(id -un 1000 2>/dev/null || echo pi)}
-NOOK_HOME=$(getent passwd "$NOOK_USER" | cut -d: -f6)
 
 mkdir -p "$NOOK_STATE"
 
@@ -214,7 +213,9 @@ skipped() {
 # picks up fixes without anyone having to find a new URL. A checkout on disk
 # wins, which is what makes `git clone && sudo pi/boot.sh` a working dev loop.
 source_module() {
-  local name=$1 local_path="$(dirname -- "${BASH_SOURCE[0]}")/modules/$1.sh" cached="$NOOK_STATE/$1.sh"
+  local name=$1 local_path cached
+  local_path="$(dirname -- "${BASH_SOURCE[0]}")/modules/$1.sh"
+  cached="$NOOK_STATE/$1.sh"
   if [[ -r $local_path ]]; then
     # shellcheck disable=SC1090
     . "$local_path"
@@ -229,7 +230,8 @@ source_module() {
 # Same story for the helper scripts the modules install: prefer the checkout,
 # fall back to the raw URL.
 install_bin() {
-  local name=$1 src="$(dirname -- "${BASH_SOURCE[0]}")/bin/$1" dest=/usr/local/bin/$1
+  local name=$1 src dest=/usr/local/bin/$1
+  src="$(dirname -- "${BASH_SOURCE[0]}")/bin/$1"
   if [[ -r $src ]]; then
     install -m 755 "$src" "$dest"
   else

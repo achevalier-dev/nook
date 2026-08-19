@@ -23,13 +23,22 @@ syntax() {
 # `shellcheck shell=bash` directive, and following sources from the dispatcher
 # makes shellcheck walk the same libraries once per case arm.
 lint() {
-  command -v shellcheck >/dev/null || {
-    echo "shellcheck not installed — skipping (CI will run it)" >&2
+  local runner=()
+  if command -v shellcheck >/dev/null; then
+    runner=(shellcheck)
+  elif command -v docker >/dev/null && docker info >/dev/null 2>&1; then
+    # Nothing on this machine has to be installed for CI's own check to be
+    # runnable here — which is the difference between finding a lint failure
+    # now and finding it after pushing.
+    runner=(docker run --rm -v "$PWD:/mnt" -w /mnt koalaman/shellcheck-alpine:stable shellcheck)
+  else
+    echo "no shellcheck and no docker — skipping the lint pass (CI will run it)" >&2
     return 0
-  }
+  fi
+
   local f bad=0
   for f in "${SCRIPTS[@]}"; do
-    shellcheck --severity=warning "$f" || bad=1
+    "${runner[@]}" --severity=warning "$f" || bad=1
   done
   [[ $bad == 0 ]] && echo "shellcheck: ${#SCRIPTS[@]} scripts clean at warning severity"
   return $bad
