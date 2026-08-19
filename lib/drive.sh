@@ -6,6 +6,8 @@
 # attaching the same drive read-write will corrupt it — both cache metadata and
 # neither knows about the other. Every guard below exists for that one reason.
 
+NOOK_BOOT_HINT=${NOOK_BOOT_URL:-https://raw.githubusercontent.com/achevalier-dev/nook/main/pi/boot.sh}
+
 # NBD hands out numbered devices from one pool shared by every export on the
 # machine, so a second nook must not land on the first one's device. The choice
 # is recorded per nook, because nothing in /dev says which box a device belongs
@@ -68,7 +70,13 @@ drive_holders() {
 
 cmd_attach() {
   load_config
-  [[ $NOOK_TRANSPORT != none ]] || die "this nook has no drive export"
+  if [[ $NOOK_TRANSPORT == none ]]; then
+    die "$NOOK has no drive — it had no external disk when it was set up.
+  Plug one in and run the boot script on it again:
+      nook ssh
+      curl -fsSL $NOOK_BOOT_HINT | bash -s -- --format
+  The shared folder works without one: nook mount"
+  fi
 
   local dev
   dev=$(disk_device || true)

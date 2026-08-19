@@ -140,7 +140,9 @@ follow_boot() {
   wait "$pid" 2>/dev/null || true
 
   status=$(systemctl show -p Result --value nook-boot 2>/dev/null || echo unknown)
-  systemctl reset-failed nook-boot 2>/dev/null || true
+  if [[ $(systemctl show -p LoadState --value nook-boot 2>/dev/null) != not-found ]]; then
+    systemctl reset-failed nook-boot 2>/dev/null || true
+  fi
   if [[ $status == success ]]; then
     exit 0
   fi
@@ -169,9 +171,13 @@ DETACH
       follow_boot
     fi
     # A finished or failed unit stays loaded until something clears it, and
-    # systemd-run refuses to reuse the name while it is there.
-    systemctl stop nook-boot 2>/dev/null || true
-    systemctl reset-failed nook-boot 2>/dev/null || true
+    # systemd-run refuses to reuse the name while it is there. Only touch it if
+    # it is actually loaded — systemd logs a complaint for each call otherwise,
+    # into the very journal we are about to show.
+    if [[ $(systemctl show -p LoadState --value nook-boot 2>/dev/null) != not-found ]]; then
+      systemctl stop nook-boot 2>/dev/null || true
+      systemctl reset-failed nook-boot 2>/dev/null || true
+    fi
     systemd-run --unit=nook-boot --description="nook boot script" \
       --setenv=NOOK_DETACHED=1 --quiet -- bash -c "$(rerun_command)"
     follow_boot
