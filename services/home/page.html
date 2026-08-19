@@ -174,6 +174,26 @@
   footer a { color: var(--dim); text-decoration: none; border-bottom: 1px solid var(--rule); }
   footer a:hover { color: var(--amber); }
   #measured:not(:empty)::after { content: " · "; color: var(--rule); }
+  /* ── the overlay ─────────────────────────────────────────────────────── */
+  /* No card: like a real cluster, the dials sit straight on a darkened room. */
+  #scrim {
+    position: fixed; inset: 0; z-index: 20;
+    display: flex; align-items: center; justify-content: center;
+    background: #101216d9; backdrop-filter: blur(3px);
+    animation: fade .18s ease-out;
+  }
+  #scrim[hidden] { display: none; }
+  @keyframes fade { from { opacity: 0 } }
+  #stage { text-align: center; padding: 1.5rem; }
+  #stage .ttl { margin: 0 0 1.8rem; color: #ffffff8c; font-size: .58rem;
+                letter-spacing: .34em; text-transform: uppercase; }
+  .pair { display: flex; gap: clamp(1.5rem, 6vw, 4rem); justify-content: center; flex-wrap: wrap; }
+  .g.big .dial { max-width: clamp(11rem, 30vw, 15rem); }
+  .g.big .read { font-size: clamp(1.6rem, 4.5vw, 2.3rem); font-weight: 500; }
+  .g.big .lbl { color: #ffffff8c; font-size: .58rem; letter-spacing: .28em; margin-top: .9rem; }
+  #stage .foot { margin: 2.2rem 0 0; color: #ffffffc4; font-size: .8rem; }
+  #stage .hint { margin: .7rem 0 0; color: #ffffff5c; font-size: .68rem; }
+
   @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 </style>
 
@@ -216,6 +236,24 @@
     <span id="stamp">reading…</span>
   </footer>
 </main>
+
+<div id="scrim" hidden>
+  <div id="stage">
+    <p class="ttl">link</p>
+    <div class="pair">
+      <div class="g big" data-gauge="down" data-redline="1">
+        <div class="dial"><div class="read"><span>—</span></div></div>
+        <div class="lbl">down · Mb/s</div>
+      </div>
+      <div class="g big" data-gauge="up" data-redline="1">
+        <div class="dial"><div class="read"><span>—</span></div></div>
+        <div class="lbl">up · Mb/s</div>
+      </div>
+    </div>
+    <p class="foot"><span id="oline">measuring — about half a minute</span></p>
+    <p class="hint">esc, or anywhere outside, to close</p>
+  </div>
+</div>
 
 <script>
   const $ = id => document.getElementById(id);
@@ -270,7 +308,7 @@
        </svg>`);
   }
 
-  document.querySelectorAll('.g').forEach(buildDial);
+  document.querySelectorAll('.g:not(.big)').forEach(buildDial);
 
   // A needle is a mass on a spring against a hairspring, and that is how this
   // one moves: position integrated every frame from a spring pulling toward a
@@ -280,7 +318,7 @@
   // never stops until it is done.
   const rand = (lo, hi) => lo + Math.random() * (hi - lo);
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const gauges = [...document.querySelectorAll('.g')];
+  const gauges = [...document.querySelectorAll('.g:not(.big)')];
   const state = new Map();
   let ignited = false, raf = 0, last = 0;
 
@@ -386,39 +424,19 @@
   };
 
   // ── link ───────────────────────────────────────────────────────────────
-  // The scale latches upward: a 40 Mbps line and a 900 Mbps line cannot share a
-  // dial face, and picking the smallest that fits keeps the needle in the part
-  // of the sweep where it can be read.
+  // A measurement you ask for does not belong in the row of readings the box
+  // takes on its own. It gets an overlay, the way Omarchy's speed test does:
+  // two dials on a scrim, nothing else on screen.
   const STOPS = [25, 50, 100, 250, 500, 1000, 2500];
-  let linkAdded = false;
-
-  function addLinkDials() {
-    if (linkAdded) return;
-    linkAdded = true;
-    for (const [key, label] of [['down', 'down'], ['up', 'up']]) {
-      const el = document.createElement('div');
-      el.className = 'g';
-      el.dataset.gauge = key;
-      el.dataset.redline = '1';
-      el.innerHTML = `<div class="dial"><div class="read"><span>—</span><small>Mb/s</small></div></div><div class="lbl">${label}</div>`;
-      document.getElementById('cluster').appendChild(el);
-      buildDial(el, document.querySelectorAll('.g').length - 1);
-      register(el);
-    }
-  }
 
   async function readLink() {
     try {
       const s = await (await fetch('speedtest.json?t=' + Date.now(), { cache: 'no-store' })).json();
-      if (!(s.down > 0 || s.up > 0)) return;
-      addLinkDials();
-      const top = STOPS.find(v => Math.max(s.down, s.up) <= v * .92) || STOPS[STOPS.length - 1];
-      set('down', s.down / top, s.down.toFixed(s.down < 100 ? 1 : 0));
-      set('up', s.up / top, s.up.toFixed(s.up < 100 ? 1 : 0));
+      if (!(s.down > 0 || s.up > 0)) return null;
       const when = new Date(s.at);
-      $('measured').textContent =
-        `${s.latency} ms · measured ${when.toLocaleDateString()}`;
-    } catch { /* never measured, or the box is not answering */ }
+      $('measured').textContent = `${s.latency} ms · measured ${when.toLocaleDateString()}`;
+      return s;
+    } catch { return null; }
   }
 
   async function read() {
@@ -455,7 +473,6 @@
   read();
   readLink();
   setInterval(read, 20000);
-  setInterval(readLink, 300000);
   // Coming back to a tab should not show a minute-old temperature.
   document.addEventListener('visibilitychange', () => !document.hidden && read());
 
@@ -602,25 +619,68 @@
   load();
 
   // ── measure ────────────────────────────────────────────────────────────
-  // The box does the measuring; this only asks it to and waits. It takes the
-  // better part of a minute, so the button says so rather than looking hung.
-  const measure = $('measure');
-  measure?.addEventListener('click', async () => {
-    const was = measure.textContent;
-    measure.disabled = true;
-    measure.textContent = 'measuring…';
+  // The box does the measuring; this asks it to, and gives the needles
+  // something honest to do in the half minute before an answer exists.
+  const scrim = $('scrim'), oline = $('oline');
+  const overlayDials = [...document.querySelectorAll('.g.big')];
+  overlayDials.forEach((g, i) => { buildDial(g, 100 + i); register(g); });
+
+  let idle = 0, busy = false;
+
+  function closeOverlay() {
+    clearInterval(idle);
+    scrim.hidden = true;
+  }
+
+  function scaleTo(s) {
+    return STOPS.find(v => Math.max(s.down, s.up) <= v * .92) || STOPS[STOPS.length - 1];
+  }
+
+  function showLink(s) {
+    const top = scaleTo(s);
+    for (const [key, val] of [['down', s.down], ['up', s.up]]) {
+      const g = document.querySelector(`.g.big[data-gauge="${key}"]`);
+      g.querySelector('.read span').textContent = val.toFixed(val < 100 ? 1 : 0);
+      aim(g, val / top, false);
+    }
+    oline.textContent = `${s.latency} ms round trip · full scale ${top} Mb/s`;
+  }
+
+  async function openOverlay() {
+    if (busy) return;
+    busy = true;
+    scrim.hidden = false;
+
+    // Nothing to report yet, so the needles wander rather than sit at zero
+    // pretending to be a reading of nothing.
+    let up = true;
+    overlayDials.forEach(g => aim(g, .12, false));
+    oline.textContent = 'measuring — about half a minute';
+    for (const g of overlayDials) g.querySelector('.read span').textContent = '—';
+    clearInterval(idle);
+    idle = setInterval(() => {
+      up = !up;
+      overlayDials.forEach((g, i) => aim(g, up ? .62 + i * .08 : .18 + i * .05, false));
+    }, 1100);
+
     try {
       const r = await fetch('api/speedtest', { method: 'POST' });
-      if (!r.ok) throw new Error(await r.text());
-      await readLink();
-      measure.textContent = 'measure again';
+      if (!r.ok) throw new Error(String(r.status));
+      clearInterval(idle);
+      showLink(await r.json());
+      readLink();
     } catch {
-      measure.textContent = 'could not measure';
-      setTimeout(() => (measure.textContent = was), 3000);
+      clearInterval(idle);
+      overlayDials.forEach(g => aim(g, 0, false));
+      oline.textContent = 'the box could not measure its link';
     } finally {
-      measure.disabled = false;
+      busy = false;
     }
-  });
+  }
+
+  $('measure')?.addEventListener('click', openOverlay);
+  scrim.addEventListener('click', e => { if (e.target === scrim) closeOverlay(); });
+  addEventListener('keydown', e => { if (e.key === 'Escape' && !scrim.hidden) closeOverlay(); });
 
   // ── share ──────────────────────────────────────────────────────────────
   // The page into a PNG, in the browser, with no library and nothing fetched.
