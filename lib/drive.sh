@@ -6,14 +6,38 @@
 # attaching the same drive read-write will corrupt it — both cache metadata and
 # neither knows about the other. Every guard below exists for that one reason.
 
+# NBD hands out numbered devices from one pool shared by every export on the
+# machine, so a second nook must not land on the first one's device. The choice
+# is recorded per nook, because nothing in /dev says which box a device belongs
+# to once it is connected.
+nbd_size() { cat "/sys/block/$(basename "$1")/size" 2>/dev/null || echo 0; }
+
+allocate_nbd() {
+  local i dev
+  # A device we picked before and nobody is using is the one to pick again —
+  # it keeps /dev stable across attaches for anyone watching.
+  if [[ -n ${NBD_DEV:-} && $(nbd_size "$NBD_DEV") == 0 ]]; then
+    echo "$NBD_DEV"
+    return 0
+  fi
+  for i in $(seq 0 15); do
+    dev=/dev/nbd$i
+    [[ -e /sys/block/nbd$i ]] || continue
+    [[ $(nbd_size "$dev") == 0 ]] || continue
+    echo "$dev"
+    return 0
+  done
+  die "every nbd device is in use — eject another nook's drive first"
+}
+
 # Which device the drive arrived as, or nothing. Asked rather than remembered:
-# the kernel picks the letter and it moves between attaches.
+# on iSCSI the kernel picks the letter and it moves between attaches.
 disk_device() {
   if [[ $NOOK_TRANSPORT == nbd ]]; then
     # An idle /dev/nbd0 exists but reports zero size, so its presence proves
     # nothing — the size is what says a connection is live.
-    [[ -b $NBD_DEV ]] || return 1
-    [[ $(lsblk -bno SIZE "$NBD_DEV" 2>/dev/null | head -n1) -gt 0 ]] || return 1
+    [[ -n ${NBD_DEV:-} && -b $NBD_DEV ]] || return 1
+    [[ $(nbd_size "$NBD_DEV") -gt 0 ]] || return 1
     echo "$NBD_DEV"
     return 0
   fi
@@ -64,6 +88,8 @@ cmd_attach() {
   if [[ $NOOK_TRANSPORT == nbd ]]; then
     need nbd-client "nbd"
     sudo modprobe nbd
+    NBD_DEV=$(allocate_nbd)
+    printf '%s\n' "$NBD_DEV" >"$NOOK_DIR/nbd"
     # -persist keeps the device alive across a suspend or a flaky link instead
     # of handing the filesystem an I/O error the moment a packet is late.
     sudo nbd-client "$NOOK_HOST" 10809 "$NBD_DEV" -name nook -persist
@@ -130,8 +156,8 @@ cmd_format() {
   cat <<EOF
 
   This erases everything on the nook drive at $dev.
-  It is the drive, not the shared $NOOK_DATA/files folder, and not the nook's
-  own SD card — but whatever is on it now is gone for good.
+  It is $NOOK's drive, not the shared $NOOK_DATA/files folder, and not the
+  box's own system disk — but whatever is on it now is gone for good.
 
 EOF
   # The device is resolved for you and the label has to be typed: a hand-written

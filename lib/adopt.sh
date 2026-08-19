@@ -1,13 +1,27 @@
 # shellcheck shell=bash
 # nook adopt — pair this machine with a nook, and nook boot — run the boot
-# script on a Pi over SSH instead of typing the one-liner on the Pi itself.
+# script on a box over SSH instead of typing the one-liner on it directly.
+#
+# Adopting a second box does not replace the first: each gets its own directory
+# under ~/.nook, and `nook use` picks which one commands talk to.
 
 BOOT_URL=${NOOK_BOOT_URL:-https://raw.githubusercontent.com/achevalier-dev/nook/main/pi/boot.sh}
 
 cmd_adopt() {
-  local host=${1:-nook}
+  local host="" name=""
+  while [[ $# -gt 0 ]]; do
+    case $1 in
+      --as) name=$2; shift 2 ;;
+      -*) die "unknown option: $1" ;;
+      *) host=$1; shift ;;
+    esac
+  done
+  host=${host:-$(default_nook_host)}
+  [[ -n $host ]] || die "usage: nook adopt <host> [--as <name>]"
+
   need ssh
   need jq
+  migrate_single_nook
 
   log "reaching $host"
   ssh -o BatchMode=yes -o ConnectTimeout=10 "$host" true ||
@@ -17,16 +31,34 @@ cmd_adopt() {
   conf=$(ssh "$host" cat /etc/nook.conf) ||
     die "$host has no /etc/nook.conf — run the boot script there first, or: nook boot $host"
 
-  mkdir -p "$NOOK_HOME"
+  # The box names itself. Two boxes that both answer to "nook" need --as, and
+  # say so rather than quietly overwriting each other.
+  name=${name:-$(sed -n 's/^NOOK_NAME=//p' <<<"$conf" | head -n1)}
+  name=${name:-$host}
+  local dir
+  dir=$(nook_dir "$name")
+  if [[ -f $dir/config ]]; then
+    local existing
+    existing=$(sed -n 's/^NOOK_HOST=//p' "$dir/config" | head -n1)
+    [[ $existing == "$host" ]] ||
+      die "a different nook is already called '$name' ($existing) — adopt this one with --as <other-name>"
+  fi
+
+  mkdir -p "$dir"
   {
     echo "# written by nook adopt on $(date -Is)"
     echo "NOOK_HOST=$host"
-    echo "$conf"
-  } >"$NOOK_CONFIG"
+    printf '%s\n' "$conf"
+  } >"$dir/config"
+
+  # The first one adopted becomes the default; later ones do not steal it.
+  [[ -f $NOOK_HOME/default ]] || printf '%s\n' "$name" >"$NOOK_HOME/default"
+
+  NOOK=$name
   load_config
 
-  adopt_ssh_config
-  # NBD has no per-initiator ACLs, so there is nothing to register for it.
+  write_ssh_config
+  log "ssh config updated ($HOME/.ssh/config)"
   if [[ $NOOK_TRANSPORT == iscsi ]]; then
     adopt_iscsi_initiator
   fi
@@ -34,38 +66,31 @@ cmd_adopt() {
   adopt_mount_unit
   adopt_bookmark
 
-  notify "adopted $host"
+  notify "adopted $name"
   cat <<EOF
 
 next:
   nook mount     $NOOK_DATA/files at $NOOK_MOUNT — shared, many machines
   nook attach    the drive as a real block device — yours alone while attached
-  nook up <dir>  run a compose file from here, on the nook
+  nook up <dir>  run a compose file from here, on $name
 EOF
+  local others
+  others=$(nooks | grep -vx "$name" | paste -sd' ' || true)
+  if [[ -n $others ]]; then
+    echo "  nook use $name   — commands go to $(default_nook) until you do"
+  fi
 }
 
-# Its own marked block so re-adopting replaces it instead of stacking copies,
-# and so the rest of the file is never touched.
-adopt_ssh_config() {
-  local file="$HOME/.ssh/config"
-  mkdir -p "$HOME/.ssh" && chmod 700 "$HOME/.ssh"
-  [[ -f $file ]] || : >"$file"
-  chmod 600 "$file"
-
-  replace_block "$file" "# >>> nook" "# <<< nook" prepend <<EOF
-Host $NOOK_HOST
-	HostName $NOOK_HOST
-	# One connection reused by every nook command. A fresh handshake per call is
-	# what makes a status widget feel heavy.
-	ControlMaster auto
-	ControlPath ~/.ssh/nook-%r@%h:%p
-	ControlPersist 5m
-	ServerAliveInterval 15
-	ServerAliveCountMax 3
-EOF
-  log "ssh config updated ($file)"
+# `nook adopt` with no argument re-reads the current default's config, which is
+# how a box that changed transport or data path gets picked up.
+default_nook_host() {
+  local name
+  name=$(default_nook 2>/dev/null) || return 0
+  sed -n 's/^NOOK_HOST=//p' "$(nook_dir "$name")/config" 2>/dev/null | head -n1
 }
 
+# One initiator name per machine, shared by every nook it attaches; the ACL that
+# uses it lives on each box separately.
 adopt_iscsi_initiator() {
   need iscsiadm "open-iscsi"
   local file=/etc/iscsi/initiatorname.iscsi
@@ -82,26 +107,28 @@ adopt_iscsi_initiator() {
 
 adopt_docker_context() {
   command -v docker >/dev/null || return 0
-  if docker context inspect nook >/dev/null 2>&1; then
-    docker context update nook --docker "host=ssh://$NOOK_HOST" >/dev/null
+  if docker context inspect "$NOOK_CONTEXT" >/dev/null 2>&1; then
+    docker context update "$NOOK_CONTEXT" --docker "host=ssh://$NOOK_HOST" >/dev/null
   else
-    docker context create nook --docker "host=ssh://$NOOK_HOST" >/dev/null
+    docker context create "$NOOK_CONTEXT" --docker "host=ssh://$NOOK_HOST" >/dev/null
   fi
-  log "docker context \"nook\" points at ssh://$NOOK_HOST"
+  log "docker context \"$NOOK_CONTEXT\" points at ssh://$NOOK_HOST"
 }
 
 adopt_mount_unit() {
-  systemctl --user enable nook-mount.service >/dev/null 2>&1 ||
-    log "nook-mount.service is not installed — run ./install.sh"
+  systemctl --user enable "nook-mount@$NOOK.service" >/dev/null 2>&1 ||
+    log "nook-mount@.service is not installed — run ./install.sh"
 }
 
-# So the folder lands in the file manager sidebar rather than only in $HOME.
+# The parent, not the mount itself: with more than one nook the sidebar wants
+# one entry holding them all, not an entry per box.
 adopt_bookmark() {
-  local file="${XDG_CONFIG_HOME:-$HOME/.config}/gtk-3.0/bookmarks"
-  mkdir -p "$(dirname "$file")"
+  local file="${XDG_CONFIG_HOME:-$HOME/.config}/gtk-3.0/bookmarks" parent
+  parent=$(dirname "$NOOK_MOUNT")
+  mkdir -p "$(dirname "$file")" "$parent"
   [[ -f $file ]] || : >"$file"
-  grep -qxF "file://$NOOK_MOUNT nook" "$file" ||
-    printf 'file://%s nook\n' "$NOOK_MOUNT" >>"$file"
+  grep -qxF "file://$parent nook" "$file" ||
+    printf 'file://%s nook\n' "$parent" >>"$file"
 }
 
 # Everything after `--` goes to the boot script, so this stays a pipe rather

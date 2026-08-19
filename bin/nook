@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# nook — a Raspberry Pi you reach from anywhere: a shared folder, a network
-# drive, and containers you run from here. One config file under ~/.nook.
+# nook — boxes you reach from anywhere: a shared folder, a network drive, and
+# containers you run from here. One directory per box under ~/.nook, so a
+# Raspberry Pi and a mini PC are two nooks, not two installations.
 # No daemon, no database.
 
 set -euo pipefail
@@ -21,9 +22,11 @@ usage() {
   cat <<'EOF'
 nook — your Raspberry Pi, from here
 
-  nook adopt                pair with a nook that has run the boot script
-  nook status               temperature, disk, containers, who holds the drive
-  nook doctor               check every moving part and name the broken one
+  nook adopt <host>         pair with a box that has run the boot script
+  nook list                 every nook adopted here, default first
+  nook use <name>           which one the other commands talk to
+  nook status [--all]       temperature, disk, containers, who holds the drive
+  nook doctor [--all]       check every moving part and name the broken one
 
   nook mount                the shared folder at ~/nook — many machines at once
   nook attach               the drive as a real block device — one at a time
@@ -33,6 +36,7 @@ nook — your Raspberry Pi, from here
   nook push <src> [dest]    rsync into the shared folder
   nook vault init [name]    a bare git repo for an Obsidian vault
   nook ssh                  a shell on the nook
+  NOOK=<name> nook …        one command against another nook
 
   nook help --all           every command, including the rare ones
 EOF
@@ -43,9 +47,15 @@ usage_all() {
 nook — your Raspberry Pi, from here
 
 Setup
-  nook adopt [<host>]                   pair with a nook, or re-read its config
-  nook boot <host> [-- <boot flags>]    run the boot script on a Pi over SSH
+  nook adopt [<host>] [--as <name>]     pair with a box, or re-read its config
+  nook boot <host> [-- <boot flags>]    run the boot script over SSH, then adopt
   nook version                          which version is installed
+
+More than one box
+  nook list                             every nook adopted here
+  nook use <name>                       make it the default
+  nook forget <name>                    drop it from this machine only
+  NOOK=<name> nook …                    one command against another one
 
 The shared folder — many machines at once
   nook mount                            /mnt/nook/files at ~/nook, over SFTP
@@ -72,8 +82,8 @@ Obsidian
   nook vault list
 
 Everything else
-  nook status [--json]                  one screen, or the JSON behind it
-  nook doctor                           check every moving part
+  nook status [--json] [--all]          one screen, or the JSON behind it
+  nook doctor [--all]                   check every moving part
   nook ssh [args…]                      a shell, or one command
   NOOK_HOME=<dir> nook …                use a different config directory
 EOF
@@ -87,6 +97,10 @@ cmd=${1:-}
 [[ -z $cmd ]] && cmd=help
 
 case $cmd in
+  use | list | forget)
+    source "$ROOT/lib/init.sh"
+    "cmd_$cmd" "$@"
+    ;;
   adopt | boot)
     source "$ROOT/lib/adopt.sh"
     "cmd_$cmd" "$@"

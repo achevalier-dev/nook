@@ -14,16 +14,17 @@ trap 'rm -rf "$DEMO_STATE"' EXIT
 # Each entry is either a command to show and run, or a hidden one that only
 # moves the demo's state along.
 SEQUENCE=(
-  "show:adopt nook"
-  "show:status"
-  "show:mount"
+  "show:adopt pi"
+  "show:adopt thinkcentre"
+  "show:list"
+  "show:status --all"
+  "show:use thinkcentre"
   "show:attach"
-  "show:disk"
   "show:eject"
-  "hide:hold"
+  "hide:hold thinkcentre"
   "show:attach"
-  "hide:release"
-  "show:doctor"
+  "hide:release thinkcentre"
+  "show:doctor --all"
 )
 
 out=demo/transcript.json

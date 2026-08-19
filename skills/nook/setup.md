@@ -80,7 +80,28 @@ Re-run it after changing the Pi's transport, hostname, or data path.
 
 ## Adding a second machine
 
-Run `install.sh` and `nook adopt` there too. On iSCSI each machine gets its own
+Run the bootstrap and `nook adopt` there too. On iSCSI each machine gets its own
 initiator name and its own ACL entry; on NBD there are no ACLs and the tailnet
 is the boundary. Either way the drive is still one-at-a-time — the second
 machine can hold the shared folder simultaneously, not the drive.
+
+## Adding a second box
+
+A Pi and a mini PC are two nooks, not two installations. Run the boot script on
+each — **with a different `--name`**, because the name is the identity:
+
+```bash
+# on the mini PC
+curl -fsSL .../boot.sh | bash -s -- --name thinkcentre --format
+# back here
+nook adopt thinkcentre
+```
+
+Then `nook list`, `nook use <name>`, or `NOOK=<name> nook …` for one command.
+If two boxes end up both calling themselves `nook`, adopt the second with
+`--as <other-name>`; `nook adopt` refuses to overwrite an existing entry that
+points at a different host rather than silently replacing it.
+
+`nook forget <name>` drops a box from this machine — the config directory, the
+mount unit instance, the Docker context and its `Host` block. Nothing is touched
+on the box itself, so adopting it again is one command.

@@ -1,23 +1,27 @@
 [
   {
-    "command": "nook adopt nook",
-    "output": "  reaching nook\n  ssh config updated (/home/you/.ssh/config)\n  docker context \"nook\" points at ssh://nook\nadopted nook\n\nnext:\n  nook mount     /mnt/nook/files at /home/you/nook — shared, many machines\n  nook attach    the drive as a real block device — yours alone while attached\n  nook up <dir>  run a compose file from here, on the nook"
+    "command": "nook adopt pi",
+    "output": "  reaching pi\n  ssh config updated (/home/you/.ssh/config)\n  docker context \"nook-pi\" points at ssh://pi\nadopted pi\n\nnext:\n  nook mount     /mnt/nook/files at /home/you/nook/pi — shared, many machines\n  nook attach    the drive as a real block device — yours alone while attached\n  nook up <dir>  run a compose file from here, on pi"
   },
   {
-    "command": "nook status",
-    "output": "host       nook  ·  up 6 days, 4 hours\nload       0.21   temp 47.8°C\ndisk       384G used of 1863G  ·  1479G free\ncontainers 4 running\ndrive      nbd, free\nfolder     not mounted"
+    "command": "nook adopt thinkcentre",
+    "output": "  reaching thinkcentre\n  ssh config updated (/home/you/.ssh/config)\n  docker context \"nook-thinkcentre\" points at ssh://thinkcentre\nadopted thinkcentre\n\nnext:\n  nook mount     /mnt/nook/files at /home/you/nook/thinkcentre — shared, many machines\n  nook attach    the drive as a real block device — yours alone while attached\n  nook up <dir>  run a compose file from here, on thinkcentre\n  nook use thinkcentre   — commands go to pi until you do"
   },
   {
-    "command": "nook mount",
-    "output": "mounted at /home/you/nook"
+    "command": "nook list",
+    "output": "* pi               pi                       nbd\n  thinkcentre      thinkcentre              iscsi"
+  },
+  {
+    "command": "nook status --all",
+    "output": "nook       pi  ·  up 6 days, 4 hours\nload       0.21   temp 47.8°C\ndisk       384G used of 1863G  ·  1479G free\ncontainers 4 running\ndrive      nbd, free\nfolder     not mounted\n\nnook       thinkcentre  ·  up 21 days, 8 hours\nload       0.44   temp 38.4°C\ndisk       1228G used of 3726G  ·  2497G free\ncontainers 9 running\ndrive      iscsi, free\nfolder     not mounted"
+  },
+  {
+    "command": "nook use thinkcentre",
+    "output": "default nook: thinkcentre"
   },
   {
     "command": "nook attach",
-    "output": "attached at /run/media/you/NOOK"
-  },
-  {
-    "command": "nook disk",
-    "output": "disk       /dev/nbd0 via nbd\nmounted    /run/media/you/NOOK\ntransport   nbd\nimage       /mnt/nook/disk.img (256G allocated 31G)\nexport      nook\nportal      100.87.4.12:10809\nattached    100.87.4.31"
+    "output": "attached at /run/media/you/THINKCENTRE"
   },
   {
     "command": "nook eject",
@@ -28,7 +32,7 @@
     "output": "nook: another machine has the drive attached (100.87.4.31) — eject it there first"
   },
   {
-    "command": "nook doctor",
-    "output": "tailscale     online, 100.87.4.12\nssh           ok\ntransport     nbd\nnbd           installed\nsshfs         installed\ndocker        context present\ndrive         not attached here"
+    "command": "nook doctor --all",
+    "output": "── pi\ntailscale     online, 100.87.4.12\nssh           ok\ntransport     nbd\nnbd           installed\nsshfs         installed\ndocker        context present\ndrive         not attached here\n\n── thinkcentre\ntailscale     online, 100.87.4.19\nssh           ok\ntransport     iscsi\nopen-iscsi    missing — install open-iscsi\nsshfs         installed\ndocker        context present\ndrive         not attached here"
   }
 ]

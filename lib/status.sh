@@ -5,6 +5,22 @@
 # Needs lib/drive.sh sourced alongside it for disk_device.
 
 cmd_status() {
+  # Every nook, one after another. A subshell per box so the globals load_config
+  # sets for one do not leak into the next.
+  if [[ ${1:-} == --all ]]; then
+    local name first=1
+    while read -r name; do
+      [[ -n $name ]] || continue
+      ((first)) || echo
+      first=0
+      (
+        NOOK=$name
+        cmd_status
+      ) || true
+    done < <(nooks)
+    return 0
+  fi
+
   need jq
   load_config
 
@@ -16,8 +32,8 @@ cmd_status() {
     return 0
   fi
 
-  jq -r '
-    "host       \(.name)  ·  up \(.uptime)",
+  jq -r --arg alias "$NOOK" '
+    "nook       \($alias)  ·  up \(.uptime)",
     "load       \(.load)   temp \(.temp)°C",
     "disk       \((.disk.used/1073741824)|floor)G used of \((.disk.size/1073741824)|floor)G  ·  \((.disk.avail/1073741824)|floor)G free",
     "containers \(.containers) running",
@@ -41,6 +57,19 @@ cmd_status() {
 # Prints every check even when an early one fails: "ssh is down" and "sshfs is
 # missing" are different problems and the second is worth knowing about now.
 cmd_doctor() {
+  if [[ ${1:-} == --all ]]; then
+    local name first=1
+    local worst=0
+    while read -r name; do
+      [[ -n $name ]] || continue
+      ((first)) || echo
+      first=0
+      echo "── $name"
+      ( NOOK=$name; cmd_doctor ) || worst=1
+    done < <(nooks)
+    return $worst
+  fi
+
   load_config
   local bad=0
   check() { printf '%-13s %s\n' "$1" "$2"; }

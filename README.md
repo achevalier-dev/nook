@@ -1,8 +1,9 @@
 # nook
 
-A Raspberry Pi you reach from anywhere, offering its disk to your machines two
-ways: as a folder many of them can share, and as a drive that mounts like a USB
-stick — over the network, with no cable.
+Boxes you reach from anywhere — a Raspberry Pi, a mini PC, that ThinkCentre in
+the cupboard — each offering its disk to your machines two ways: as a folder
+many of them can share, and as a drive that mounts like a USB stick, over the
+network, with no cable.
 
 Bash, `ssh`, `rsync` and the kernel's own block-device client. No daemon, no
 database, no agent running on your laptop.
@@ -20,7 +21,13 @@ every line on screen is printed by the same `cmd_` functions a real nook runs.
 
 ## Getting there
 
-On the Pi, once:
+Here, once:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/achevalier-dev/nook/main/bootstrap.sh | bash
+```
+
+On the box, once:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/achevalier-dev/nook/main/pi/boot.sh | bash
@@ -31,22 +38,43 @@ Tailscale and the pairing is done — there is no key to generate, copy, or past
 back. `--ssh` goes up with it, so SSH authenticates by tailnet identity and no
 keys are created or authorised anywhere either.
 
-Then on your machine:
+Then, back here:
 
 ```bash
-./install.sh
-nook adopt
+nook adopt raspberrypi.local
 ```
 
-Or do both from your machine, if the Pi already has SSH:
+Or do both from here, if the box already has SSH:
 
 ```bash
 nook boot raspberrypi.local -- --format
 ```
 
-`adopt` reads the Pi's `/etc/nook.conf`, writes an SSH block with a persistent
+`adopt` reads the box's `/etc/nook.conf`, writes an SSH block with a persistent
 control socket, points a Docker context at it, enables the mount unit, and adds
 `~/nook` to the file manager sidebar.
+
+## More than one box
+
+A Pi and a mini PC are two nooks, not two installations. Run the boot script on
+each with its own `--name`, adopt each, and pick which one commands talk to:
+
+```bash
+nook adopt thinkcentre
+nook list                # every nook here, default marked *
+nook use thinkcentre
+NOOK=pi nook status      # one command elsewhere, default unchanged
+nook status --all        # or all of them
+nook doctor --all
+```
+
+Nothing is shared between them: the folder mounts at `~/nook/<name>`, the drive
+carries the name as its label, the Docker context is `nook-<name>`, and NBD
+devices are allocated per nook. Two boxes that collide on any of those look
+exactly like the wrong machine answering, so `test/nooks_test.sh` keeps them
+apart.
+
+`nook forget <name>` drops one from this machine and touches nothing on the box.
 
 ## Two lanes for the same disk
 
@@ -125,10 +153,13 @@ real certificate.
 ## Commands
 
 ```
-nook adopt [host]      pair with a nook that has run the boot script
-nook boot <host>       run the boot script on a Pi over SSH, then adopt it
-nook status [--json]   temperature, disk, containers, who holds the drive
-nook doctor            check every moving part and name the broken one
+nook adopt [host] [--as name]   pair with a box that has run the boot script
+nook boot <host>       run the boot script over SSH, then adopt it
+nook list              every nook adopted here, default marked *
+nook use <name>        which one the other commands talk to
+nook forget <name>     drop one from this machine only
+nook status [--json] [--all]    temperature, disk, containers, the drive
+nook doctor [--all]    check every moving part and name the broken one
 
 nook mount / umount    the shared folder at ~/nook
 nook push / pull       rsync in and out of it
@@ -145,10 +176,10 @@ nook ssh
 nook help --all        every command
 ```
 
-`NOOK_HOME` moves the config directory, which is how a throwaway experiment
-stays out of the real one.
+`NOOK=<name>` picks a nook for one command. `NOOK_HOME` moves the whole config
+directory, which is how a throwaway experiment stays out of the real one.
 
-On the Pi, `nook-target` manages the export and `nook-info` prints the JSON
+On the box, `nook-target` manages the export and `nook-info` prints the JSON
 `nook status` reads.
 
 ## The boot script
@@ -156,7 +187,7 @@ On the Pi, `nook-target` manages the export and `nook-info` prints the JSON
 Re-running it is the upgrade path — every module checks its own work first.
 
 ```
---name NAME       hostname and Tailscale name (default: nook)
+--name NAME       hostname, Tailscale name, and the nook's identity (default: nook)
 --data PATH       where the external disk is mounted (default: /mnt/nook)
 --disk-size SIZE  size of the network drive image (default: 256G)
 --format          make a filesystem on a blank external disk
@@ -164,6 +195,9 @@ Re-running it is the upgrade path — every module checks its own work first.
 --usb-gadget      also offer the drive over a USB-C cable
 --skip MODULE     skip a module by name, repeatable
 ```
+
+Give each box its own `--name`: it becomes the hostname, the Tailscale name and
+the name every `nook` command refers to it by.
 
 Nothing is formatted without `--format`: an unpartitioned USB disk is far more
 likely to hold somebody's photos than to be blank. The external disk goes into
@@ -199,6 +233,7 @@ skills/nook/
 
 ```
 bin/nook           dispatcher
+lib/common.sh      which nook a command talks to, and everything derived from it
 lib/<topic>.sh     one file per area, exporting cmd_<name> functions
 pi/boot.sh         the one-liner, and pi/modules/ the steps it sources
 pi/bin/            helpers installed onto the Pi
@@ -207,7 +242,7 @@ systemd/ udev/     the mount unit and the rule that makes the drive removable
 ```
 
 ```bash
-./script/check     # syntax, shellcheck, json, four behaviour tests — no Pi needed
+./script/check     # syntax, shellcheck, json, five behaviour tests — no box needed
 ./demo/record.sh && ./demo/render.py   # rebuild the recording above
 ```
 
@@ -220,8 +255,9 @@ See [AGENTS.md](AGENTS.md) for the shell rules, and
 
 ## Requirements
 
-**Pi** — Raspberry Pi OS Lite or any Debian, an external USB disk, and a
-Tailscale account.
+**The box** — Raspberry Pi OS Lite or any Debian, an external USB disk, and a
+Tailscale account. An x86 mini PC works the same way and will usually get the
+better transport, because its kernel has an iSCSI target and the Pi's does not.
 
 **Your machine** — Linux with `ssh`, `sshfs`, `jq`, `rsync` and `udisks2`, plus
 `open-iscsi` or `nbd` depending on which transport the Pi ended up with.

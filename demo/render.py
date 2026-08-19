@@ -24,7 +24,7 @@ OUT_MP4 = ROOT / "demo" / "nook.mp4"
 
 FONT = "/usr/share/fonts/TTF/JetBrainsMonoNerdFont-Regular.ttf"
 FONT_SIZE = 17
-COLS, ROWS = 84, 26
+COLS, ROWS = 84, 28
 PAD = 26
 CHROME = 34
 FPS = 16
@@ -40,9 +40,9 @@ RED = "#f7768e"
 CYAN = "#7dcfff"
 
 # How long a finished command stays on screen before the next one starts.
-HOLD_FRAMES = 18
+HOLD_FRAMES = 14
 # Frames per typed character. Long commands get compressed rather than dragging.
-TYPE_FRAMES = 2
+TYPE_FRAMES = 1
 
 GOOD_PREFIXES = ("adopted", "mounted", "attached", "ejected", "formatted", "unmounted")
 
@@ -157,9 +157,10 @@ def main():
         palette = tmp / "palette.png"
 
         # A generated palette rather than ffmpeg's default: the panel is a dozen
-        # near-identical dark blues and the stock palette bands them badly.
+        # near-identical dark blues and the stock palette bands them badly. 64
+        # colours is plenty for flat terminal text and roughly halves the file.
         run(["ffmpeg", "-y", "-framerate", str(FPS), "-i", pattern,
-             "-vf", "palettegen=stats_mode=diff", str(palette)])
+             "-vf", "palettegen=max_colors=64:stats_mode=diff", str(palette)])
         run(["ffmpeg", "-y", "-framerate", str(FPS), "-i", pattern, "-i", str(palette),
              "-lavfi", "paletteuse=dither=bayer:bayer_scale=3", str(OUT_GIF)])
         # yuv420p refuses an odd width, and the panel width falls out of the

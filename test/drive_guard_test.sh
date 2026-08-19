@@ -14,9 +14,12 @@ source lib/common.sh
 # shellcheck source=lib/drive.sh
 source lib/drive.sh
 
+NOOK=stub
+NOOK_DIR="$NOOK_HOME/stub"
+mkdir -p "$NOOK_DIR"
 NOOK_HOST=stub
 NOOK_TRANSPORT=nbd
-NOOK_LABEL=NOOK
+NOOK_LABEL=STUB
 NBD_DEV=/dev/null/never
 load_config() { :; }
 notify() { echo "$1"; }
@@ -49,6 +52,7 @@ grep -q "100.64.0.9" <<<"$out" || {
 remote() { echo "attached    none"; }
 sudo() { echo "sudo $*"; }
 nbd-client() { :; }
+allocate_nbd() { echo /dev/nbd0; }
 wait_for_disk() { echo /dev/null; }
 mounted_at() { echo /run/media/test/NOOK; }
 if ! out=$(cmd_attach 2>&1); then

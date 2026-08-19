@@ -12,7 +12,7 @@ cmd_mount() {
   mkdir -p "$NOOK_MOUNT"
   # The unit carries the reconnect options and survives a suspend; the direct
   # call is the fallback for a machine where install.sh never ran.
-  systemctl --user start nook-mount.service 2>/dev/null ||
+  systemctl --user start "nook-mount@$NOOK.service" 2>/dev/null ||
     sshfs -o reconnect,ServerAliveInterval=15,ServerAliveCountMax=3,idmap=user \
       "$NOOK_HOST:$NOOK_DATA/files" "$NOOK_MOUNT"
   notify "mounted at $NOOK_MOUNT"
@@ -20,7 +20,7 @@ cmd_mount() {
 
 cmd_umount() {
   load_config
-  systemctl --user stop nook-mount.service 2>/dev/null || true
+  systemctl --user stop "nook-mount@$NOOK.service" 2>/dev/null || true
   if mountpoint -q "$NOOK_MOUNT"; then
     # -z, because the usual reason for unmounting by hand is that the mount went
     # stale and a plain fusermount3 -u would block on it too.

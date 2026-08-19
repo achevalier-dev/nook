@@ -11,7 +11,8 @@ needs a new runtime, it probably needs a different design.
 ```
 bin/nook           dispatcher — flag parsing lives in the subcommands, not here
 demo/              the recording harness: real cmd_ functions, stubbed Pi
-lib/common.sh      paths, config, die/log/need/notify, the reused SSH connection
+lib/common.sh      which nook is selected, paths, die/log/need, the SSH block
+lib/init.sh        use / list / forget — choosing between boxes
 lib/<topic>.sh     one file per area, exporting cmd_<name> functions
 pi/boot.sh         the one-liner that turns a Pi into a nook
 pi/modules/*.sh    one file per concern, sourced by boot.sh in order
@@ -24,6 +25,17 @@ udev/              the rule that makes the drive show as removable
 A new subcommand is a `cmd_<name>` function in the `lib/` file that owns its
 area, plus a case arm in `bin/nook`. Nothing else — `test/dispatch_test.sh`
 fails if the two disagree in either direction.
+
+## More than one box
+
+Each adopted box is a directory under `~/.nook`, and `~/.nook/default` names the
+one commands use. `NOOK=<name>` overrides it for a single call.
+
+Everything per-box is *derived* in `load_config`, never stored twice: the mount
+(`~/nook/<name>`), the drive label, the Docker context (`nook-<name>`) and the
+NBD device. Two boxes sharing any of those looks like the wrong machine
+answering. `load_config` therefore `unset`s them before deriving — it runs more
+than once per process, because `nook status --all` walks every nook.
 
 ## The two lanes
 

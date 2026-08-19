@@ -12,8 +12,19 @@ and the Docker context. It exits non-zero when something is broken.
 
 ## By symptom
 
-**`nook: not adopted yet`** — `~/.nook/config` is missing. Run
-`nook adopt`. If the Pi has never run the boot script, `adopt` will say so.
+**`no nook adopted here`** — nothing under `~/.nook`. Run `nook adopt <host>`.
+If the box has never run the boot script, `adopt` says so.
+
+**`unknown nook '<name>'`** — `NOOK` names a box that is not adopted here, or
+`~/.nook/default` points at one that was forgotten. `nook list` shows what
+exists.
+
+**The wrong box answered** — check `nook list` before anything else. `NOOK` in
+the environment beats the default, and it is easy to leave exported in a shell.
+
+**`every nbd device is in use`** — NBD devices come from one pool shared by the
+whole machine. Eject another nook's drive, or raise the pool with
+`sudo modprobe nbd nbds_max=32`.
 
 **`cannot ssh to <host>`** — check `tailscale status` on both ends. If the peer
 is listed and online but SSH still fails, the stale control socket is the usual

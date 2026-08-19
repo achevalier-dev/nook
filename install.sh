@@ -68,9 +68,11 @@ fi
 
 if command -v systemctl >/dev/null; then
   mkdir -p "$UNIT_DIR"
-  cp -f "$REPO/systemd/nook-mount.service" "$UNIT_DIR/"
+  # Templated on the nook's name: one instance per box, enabled by `nook adopt`.
+  cp -f "$REPO/systemd/nook-mount@.service" "$UNIT_DIR/"
+  rm -f "$UNIT_DIR/nook-mount.service"
   systemctl --user daemon-reload 2>/dev/null || true
-  echo "installed $UNIT_DIR/nook-mount.service"
+  echo "installed $UNIT_DIR/nook-mount@.service"
 else
   echo "no systemd here — 'nook mount' will call sshfs directly" >&2
 fi
@@ -95,8 +97,9 @@ esac
 cat <<'EOF'
 
 next:
-  on the Pi:  curl -fsSL https://raw.githubusercontent.com/achevalier-dev/nook/main/pi/boot.sh | bash
-  here:       nook adopt
+  on the box:  curl -fsSL https://raw.githubusercontent.com/achevalier-dev/nook/main/pi/boot.sh | bash
+  here:        nook adopt <hostname>
 
-  or do both from here:  nook boot <hostname-or-ip>
+  or do both from here:  nook boot <hostname>
+  more than one box? adopt each, then: nook list / nook use <name>
 EOF

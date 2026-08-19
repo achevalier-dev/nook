@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 # The demo harness. It runs the real cmd_ functions out of lib/, with only the
-# things that touch a real Pi replaced: the SSH connection, the block device,
+# things that touch a real box replaced: the SSH connection, the block device,
 # and the mount table. Every line the recording shows is printed by the same
 # code a real nook runs — nothing here writes the output by hand.
+#
+# Two boxes are pretended into existence, a Raspberry Pi and a mini PC, because
+# keeping them apart is the thing worth showing.
 #
 # State lives in $DEMO_STATE so a sequence of commands behaves like a session:
 # attach then eject then attach again all say the right thing.
@@ -13,44 +16,101 @@ ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 DEMO_STATE=${DEMO_STATE:-${TMPDIR:-/tmp}/nook-demo}
 NOOK_HOME="$DEMO_STATE/home"
 export NOOK_HOME DEMO_STATE
-mkdir -p "$NOOK_HOME"
+builtin command mkdir -p "$NOOK_HOME"
 
 source "$ROOT/lib/common.sh"
 
 state() { cat "$DEMO_STATE/$1" 2>/dev/null || echo "${2:-}"; }
 set_state() { printf '%s\n' "$2" >"$DEMO_STATE/$1"; }
 
-# --- the Pi, as far as the CLI can tell ---------------------------------------
-DEMO_CONF='NOOK_NAME=nook
+# --- the boxes, as far as the CLI can tell ------------------------------------
+# Keyed by hostname. `nook adopt` reads /etc/nook.conf off each one and names
+# the nook after what it finds there.
+box_conf() {
+  case $1 in
+    thinkcentre)
+      cat <<'EOF'
+NOOK_NAME=thinkcentre
+NOOK_DATA=/mnt/nook
+NOOK_USER=ad
+NOOK_IQN_BASE=iqn.2026-08.dev.nook
+NOOK_TARGET_IQN=iqn.2026-08.dev.nook:thinkcentre
+NOOK_DISK_IMG=/mnt/nook/disk.img
+NOOK_TRANSPORT=iscsi
+EOF
+      ;;
+    *)
+      cat <<'EOF'
+NOOK_NAME=pi
 NOOK_DATA=/mnt/nook
 NOOK_USER=pi
 NOOK_IQN_BASE=iqn.2026-08.dev.nook
-NOOK_TARGET_IQN=iqn.2026-08.dev.nook:nook
+NOOK_TARGET_IQN=iqn.2026-08.dev.nook:pi
 NOOK_DISK_IMG=/mnt/nook/disk.img
-NOOK_TRANSPORT=nbd'
-
-remote() {
-  case "$*" in
-    *"cat /etc/nook.conf"*) printf '%s\n' "$DEMO_CONF" ;;
-    *nook-info*)
-      # The same shape pi/bin/nook-info emits, with the drive count following
-      # whatever the demo has done so far.
-      local attached=0
-      [[ $(state attached no) == yes ]] && attached=1
-      printf '{"name":"nook","uptime":"6 days, 4 hours","temp":47.8,"load":0.21,'
-      printf '"disk":{"size":2000398934016,"used":412316860416,"avail":1588082073600},'
-      printf '"containers":4,"transport":"nbd","attached":%s}\n' "$attached"
+NOOK_TRANSPORT=nbd
+EOF
       ;;
-    *"nook-target info"*)
-      cat <<EOF
+  esac
+}
+
+box_info() {
+  case $1 in
+    thinkcentre)
+      printf '{"name":"thinkcentre","uptime":"21 days, 8 hours","temp":38.4,"load":0.44,'
+      printf '"disk":{"size":4000787030016,"used":1319413953331,"avail":2681373076685},'
+      printf '"containers":9,"transport":"iscsi","attached":%s}\n' "$2"
+      ;;
+    *)
+      printf '{"name":"pi","uptime":"6 days, 4 hours","temp":47.8,"load":0.21,'
+      printf '"disk":{"size":2000398934016,"used":412316860416,"avail":1588082073600},'
+      printf '"containers":4,"transport":"nbd","attached":%s}\n' "$2"
+      ;;
+  esac
+}
+
+box_target() {
+  local name=$1 holder=$2
+  if [[ $name == thinkcentre ]]; then
+    cat <<EOF
+transport   iscsi
+image       /mnt/nook/disk.img (1T allocated 214G)
+target      iqn.2026-08.dev.nook:thinkcentre
+portal      100.87.4.19:3260
+allowed     iqn.2026-08.dev.nook:$(hostname)
+attached    $holder
+EOF
+  else
+    cat <<EOF
 transport   nbd
 image       /mnt/nook/disk.img (256G allocated 31G)
 export      nook
 portal      100.87.4.12:10809
-attached    $([[ $(state attached no) == yes || $(state held no) == yes ]] && echo "100.87.4.31" || echo none)
+attached    $holder
 EOF
-      ;;
-    *"git init --bare"*) : ;;
+  fi
+}
+
+# Which box a call is aimed at: the ssh target during adopt, the loaded nook
+# after that.
+demo_box() {
+  local arg
+  for arg in "$@"; do
+    case $arg in
+      thinkcentre | pi | nook) echo "$arg"; return ;;
+    esac
+  done
+  echo "${NOOK:-pi}"
+}
+
+remote() {
+  local box holder
+  box=$(demo_box "$@" "${NOOK_HOST:-}")
+  holder=none
+  [[ $(state "attached.$box" no) == yes || $(state "held.$box" no) == yes ]] && holder=100.87.4.31
+  case "$*" in
+    *"cat /etc/nook.conf"*) box_conf "$box" ;;
+    *nook-info*) box_info "$box" "$([[ $holder == none ]] && echo 0 || echo 1)" ;;
+    *"nook-target info"*) box_target "$box" "$holder" ;;
     *"ls -1"*vaults*) printf 'main.git\nwork.git\n' ;;
     *) : ;;
   esac
@@ -59,73 +119,87 @@ EOF
 ssh() { remote "$@"; }
 
 # --- this machine -------------------------------------------------------------
-NBD_DEV=/dev/nbd0
-
 # Re-applied after each `source`, because lib/drive.sh defines disk_device and
 # sourcing it would otherwise replace the stub with the real probe.
 demo_overrides() {
   disk_device() {
-    [[ $(state attached no) == yes ]] || return 1
-    echo "$NBD_DEV"
+    [[ $(state "attached.${NOOK:-pi}" no) == yes ]] || return 1
+    echo "${NBD_DEV:-/dev/sdb}"
   }
   mounted_at() {
-    [[ $(state mounted no) == yes ]] || return 0
-    echo "/run/media/you/NOOK"
+    [[ $(state "mounted.${NOOK:-pi}" no) == yes ]] || return 0
+    echo "/run/media/you/${NOOK_LABEL:-NOOK}"
   }
+  allocate_nbd() { echo /dev/nbd0; }
+  write_ssh_config() { :; }
 }
 demo_overrides
 
-mountpoint() { [[ $(state folder no) == yes ]]; }
-mkdir() { [[ ${1:-} == -p ]] && return 0; builtin command mkdir "$@"; }
+mountpoint() { [[ $(state "folder.${NOOK:-pi}" no) == yes ]]; }
+# Real directories inside the demo's own state, nothing anywhere else — the
+# recording runs with HOME set to a path that does not exist.
+mkdir() {
+  local last=${!#}
+  case $last in
+    "$DEMO_STATE"*) builtin command mkdir "$@" ;;
+    *) return 0 ;;
+  esac
+}
 
 sudo() {
   case "$1" in
     nbd-client)
-      if [[ ${2:-} == -d ]]; then set_state attached no; set_state mounted no
-      else set_state attached yes; fi
+      if [[ ${2:-} == -d ]]; then
+        set_state "attached.$NOOK" no
+        set_state "mounted.$NOOK" no
+      else
+        set_state "attached.$NOOK" yes
+      fi
       ;;
-    modprobe | blkid | tune2fs | resize2fs) : ;;
-    mkfs.ext4) : ;;
+    iscsiadm)
+      # if, not `&&`: a false guard under set -e would end the run, and the
+      # discovery call reaches this with neither flag set.
+      if [[ $* == *--login* ]]; then
+        set_state "attached.$NOOK" yes
+      elif [[ $* == *--logout* ]]; then
+        set_state "attached.$NOOK" no
+        set_state "mounted.$NOOK" no
+      fi
+      ;;
     *) : ;;
   esac
+  return 0
 }
 
 udisksctl() {
   case "${1:-}" in
-    mount) set_state mounted yes ;;
-    unmount) set_state mounted no ;;
+    mount) set_state "mounted.$NOOK" yes ;;
+    unmount) set_state "mounted.$NOOK" no ;;
   esac
 }
 
 sshfs() { :; }
-systemctl() { [[ ${1:-} == --user ]] && set_state folder yes; return 0; }
-fusermount3() { set_state folder no; }
+systemctl() { [[ ${1:-} == --user && ${2:-} == start ]] && set_state "folder.$NOOK" yes; return 0; }
+fusermount3() { set_state "folder.$NOOK" no; }
 rsync() { :; }
 need() { :; }
 notify() { echo "$1"; }
 
-# tailscale and docker answer for `nook doctor` only.
 tailscale() {
-  cat <<'EOF'
-{"Peer":{"n1":{"HostName":"nook","Online":true,"TailscaleIPs":["100.87.4.12"]}}}
-EOF
+  printf '{"Peer":{"a":{"HostName":"pi","Online":true,"TailscaleIPs":["100.87.4.12"]},'
+  printf '"b":{"HostName":"thinkcentre","Online":true,"TailscaleIPs":["100.87.4.19"]}}}\n'
 }
-docker() { [[ $* == *"context inspect nook"* ]]; }
+docker() { [[ $* == *"context inspect"* ]]; }
 nbd-client() { :; }
 command() {
-  # Everything doctor probes for is present in the demo except the one thing
-  # that honestly is not: this machine has no iSCSI client, and it does not
-  # need one, because the demo nook speaks NBD.
   if [[ ${1:-} == -v ]]; then
-    case ${2:-} in
-      iscsiadm) return 1 ;;
-      *) return 0 ;;
-    esac
+    # The demo machine honestly has no iSCSI client, which is what `nook doctor`
+    # is for — one of the two boxes needs one.
+    [[ ${2:-} == iscsiadm ]] && return 1
+    return 0
   fi
   builtin command "$@"
 }
-
-export -f state set_state 2>/dev/null || true
 
 cmd=${1:?usage: fake-nook <command> [args…]}
 shift
@@ -133,14 +207,17 @@ shift
 case $cmd in
   adopt)
     source "$ROOT/lib/adopt.sh"
-    # The parts of adopt that edit real files on a real machine are the parts a
-    # demo must not run; what it prints is unchanged.
-    adopt_ssh_config() { log "ssh config updated ($HOME/.ssh/config)"; }
+    demo_overrides
     adopt_iscsi_initiator() { :; }
-    adopt_docker_context() { log "docker context \"nook\" points at ssh://$NOOK_HOST"; }
+    adopt_docker_context() { log "docker context \"$NOOK_CONTEXT\" points at ssh://$NOOK_HOST"; }
     adopt_mount_unit() { :; }
     adopt_bookmark() { :; }
     cmd_adopt "$@"
+    ;;
+  use | list | forget)
+    source "$ROOT/lib/init.sh"
+    demo_overrides
+    "cmd_$cmd" "$@"
     ;;
   mount | umount | push | pull)
     source "$ROOT/lib/folder.sh"
@@ -164,9 +241,9 @@ case $cmd in
     "cmd_$cmd" "$@"
     ;;
   reset) builtin command rm -rf "$DEMO_STATE"; builtin command mkdir -p "$NOOK_HOME" ;;
-  # Pretend another machine took the drive, so the recording can show the guard
+  # Pretend another machine took a drive, so the recording can show the guard
   # that matters most doing its job.
-  hold) set_state held yes ;;
-  release) set_state held no ;;
+  hold) set_state "held.${1:-pi}" yes ;;
+  release) set_state "held.${1:-pi}" no ;;
   *) die "the demo harness does not cover: $cmd" ;;
 esac

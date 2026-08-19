@@ -15,10 +15,27 @@ description: >
 
 # nook Skill
 
-A nook is a Raspberry Pi that has run `pi/boot.sh` from
-[nook](https://github.com/achevalier-dev/nook). It is reachable over Tailscale,
-its external disk is at `/mnt/nook`, and it offers that disk to your machines
-two different ways.
+A nook is any box that has run `pi/boot.sh` from
+[nook](https://github.com/achevalier-dev/nook) — a Raspberry Pi, a mini PC, an
+old ThinkCentre. It is reachable over Tailscale, its external disk is at
+`/mnt/nook`, and it offers that disk to your machines two different ways.
+
+**There can be several.** Each adopted box gets its own directory under
+`~/.nook`, and every command talks to whichever one is selected:
+
+```bash
+nook list                # every nook here, default marked *
+nook use thinkcentre     # change the default
+NOOK=pi nook status      # one command against another one, default unchanged
+nook status --all        # every box, one after another
+nook doctor --all
+```
+
+Before answering anything about "the nook", check which one is selected —
+`nook list` is one line and costs nothing. Per-box values are derived, never
+shared: the mount is `~/nook/<name>`, the drive label is the name uppercased,
+the Docker context is `nook-<name>`, and NBD devices are allocated per nook and
+recorded in `~/.nook/<name>/nbd`.
 
 Everything here is driven by the `nook` CLI on the machine you are sitting at.
 Prefer it over `ssh`, `iscsiadm`, `nbd-client`, `sshfs`, and `docker --context`
@@ -70,6 +87,11 @@ same goes for the Samba block, which is bound to `tailscale0`.
 **Never mount `disk.img` on the Pi while it is exported.** Same single-writer
 rule, from the other side.
 
+**Two boxes must never share a mount point, a drive label, a Docker context or
+an NBD device.** All four are derived from the nook's name in `load_config`, and
+`test/nooks_test.sh` exists to keep them apart. A collision looks like the wrong
+machine answering, which is a miserable thing to debug.
+
 **`/etc/nook.conf` is generated.** The boot script writes it last, from the
 choices that actually took effect. Editing it by hand makes the CLI's view and
 the Pi's reality disagree. Re-run the boot script with different flags instead.
@@ -105,7 +127,7 @@ NOOK_HOME=/tmp/nook-test nook status
 ```
 
 `attached` counts established connections to the export port. It cannot name
-who — the Pi only sees sockets. `nook attach` prints the addresses.
+who — the box only sees sockets. `nook attach` prints the addresses.
 
 ## Where Things Live
 
@@ -113,11 +135,13 @@ On the machine you use:
 
 | Path | What |
 |---|---|
-| `~/.nook/config` | written by `nook adopt`; host, transport, target IQN, paths |
-| `~/.config/systemd/user/nook-mount.service` | the sshfs unit behind `nook mount` |
-| `~/.ssh/config` | a marked `# >>> nook` block with the control socket |
+| `~/.nook/<name>/config` | written by `nook adopt`; host, transport, target IQN, paths |
+| `~/.nook/<name>/nbd` | which NBD device this nook was given |
+| `~/.nook/default` | one line: the nook commands use when nothing says otherwise |
+| `~/.config/systemd/user/nook-mount@.service` | templated sshfs unit; one instance per nook |
+| `~/.ssh/config` | one marked `# >>> nook` block covering every nook |
 | `/etc/udev/rules.d/99-nook.rules` | makes the drive show as removable, not a system disk |
-| `~/nook` | the shared folder mount point |
+| `~/nook/<name>` | the shared folder mount point for that nook |
 
 On the Pi:
 

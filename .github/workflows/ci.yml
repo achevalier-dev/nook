@@ -48,3 +48,6 @@ jobs:
 
       - name: every boot module is listed and sourced-safe
         run: ./script/check --boot
+
+      - name: two nooks stay apart
+        run: ./script/check --multi
