@@ -22,10 +22,18 @@ mkdir -p "$BIN_DIR"
 ln -sf "$REPO/bin/$NAME" "$BIN_DIR/$NAME"
 echo "linked $BIN_DIR/$NAME -> $REPO/bin/$NAME"
 
+SKILL_DIR="$HOME/.claude/skills"
+
 mkdir -p "$UNIT_DIR"
 ln -sf "$REPO/pc/nook-mount.service" "$UNIT_DIR/nook-mount.service"
 systemctl --user daemon-reload
 echo "installed nook-mount.service (enabled by 'nook adopt')"
+
+# Symlinked rather than copied, the way omarchy links its own skills, so a
+# git pull updates the guides without a reinstall.
+mkdir -p "$SKILL_DIR"
+ln -sfn "$REPO/agents/skills/nook" "$SKILL_DIR/nook"
+echo "linked $SKILL_DIR/nook -> $REPO/agents/skills/nook"
 
 # Optional and asked for explicitly: the rule only changes how the file manager
 # categorises the drive, so a machine where sudo is inconvenient still works.

@@ -149,6 +149,23 @@ network at all. It exports **read-only** on purpose: the host caches the
 filesystem and assumes exclusive ownership, so the image can only ever be live
 on one side. The network path stays the one you write through.
 
+## Claude Code
+
+`install.sh` links `agents/skills/nook` into `~/.claude/skills/`, the same way
+Omarchy links its own. Claude then knows the two lanes, the single-writer rule,
+which transport your Pi ended up with, and what `nook doctor` is telling you —
+and reaches for the CLI rather than raw `iscsiadm` and `nbd-client`.
+
+```
+agents/skills/nook/
+├── SKILL.md            the model, the safety rules, where everything lives
+├── setup.md            boot script, modules, adopting
+├── drive.md            transports, attach/eject/format, resizing, recovery
+├── containers.md       the Docker context, compose, publishing ports
+├── vaults.md           Obsidian as bare git repos
+└── troubleshooting.md  symptom to cause
+```
+
 ## Commands
 
 ```
