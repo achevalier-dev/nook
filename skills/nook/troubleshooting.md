@@ -88,7 +88,16 @@ with:
 journalctl -fu nook-boot
 ```
 
-Tailscale's login link appears in that log. The same applies to anything else
+**`Unit nook-boot.service was already loaded`** — an earlier run is still going,
+or finished without being cleared. boot.sh now follows a running one instead of
+colliding with it, and the unit is `--collect` so a finished one clears itself.
+To read the Tailscale link out of a run in progress:
+
+```bash
+journalctl -u nook-boot --no-pager | grep -o 'https://login.tailscale.com[^ ]*' | tail -1
+```
+
+The same applies to anything else
 long-running on such a box:
 
 ```bash

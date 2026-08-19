@@ -135,9 +135,20 @@ if [[ -z ${NOOK_DETACHED:-} ]] && { [[ $NOOK_DETACH == 1 ]] || session_is_fragil
   Tailscale's login link appears in that log.
 
 DETACH
+    # A run already going is the common case for anyone who lost their session
+    # and came back — joining it beats colliding with it.
+    if systemctl is-active --quiet nook-boot 2>/dev/null; then
+      echo "  A run is already going. Following it instead of starting another."
+      echo
+      exec journalctl -fu nook-boot
+    fi
+    # A finished or failed unit stays loaded until something clears it, and
+    # systemd-run refuses to reuse the name while it is there.
+    systemctl stop nook-boot 2>/dev/null || true
     systemctl reset-failed nook-boot 2>/dev/null || true
+    # --collect so the next run does not have to do that clearing at all.
     exec systemd-run --unit=nook-boot --description="nook boot script" \
-      --setenv=NOOK_DETACHED=1 --quiet -- bash -c "$(rerun_command)"
+      --collect --setenv=NOOK_DETACHED=1 --quiet -- bash -c "$(rerun_command)"
   fi
   echo "    warning: no systemd-run here — staying in the foreground" >&2
 fi

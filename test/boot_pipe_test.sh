@@ -63,6 +63,15 @@ if ! unshare -r true 2>/dev/null; then
   exit 0
 fi
 
+# systemctl has to answer too, or the "is a run already going" check decides it
+# is. Inactive by default, so the normal path is the one under test.
+cat >"$stub/systemctl" <<'STUB'
+#!/usr/bin/env bash
+[[ $* == *is-active* ]] && exit 3
+exit 0
+STUB
+chmod +x "$stub/systemctl"
+
 out=$(PATH="$stub:$PATH" unshare -r bash pi/boot.sh --detach --name testbox 2>&1)
 grep -q 'systemd-run .*--unit=nook-boot' <<<"$out" || {
   echo "--detach did not move the run into a transient unit: $out" >&2
@@ -76,6 +85,10 @@ grep -q -- '--name testbox' <<<"$out" || {
   echo "--detach lost the other flags: $out" >&2
   exit 1
 }
+grep -q -- '--collect' <<<"$out" || {
+  echo "the transient unit is not --collect, so a second run collides with it: $out" >&2
+  exit 1
+}
 
 # And the escape hatch has to actually stay put.
 out=$(PATH="$stub:$PATH" unshare -r bash pi/boot.sh --no-detach --name testbox 2>&1 || true)
@@ -84,4 +97,26 @@ grep -q 'systemd-run' <<<"$out" && {
   exit 1
 }
 
-echo "boot: survives curl|bash, keeps its flags, prefers a checkout, detaches on request"
+# And when one is already running, join it rather than failing to claim the name.
+cat >"$stub/systemctl" <<'STUB'
+#!/usr/bin/env bash
+[[ $* == *is-active* ]] && exit 0
+exit 0
+STUB
+cat >"$stub/journalctl" <<'STUB'
+#!/usr/bin/env bash
+printf 'journalctl %s
+' "$*"
+STUB
+chmod +x "$stub/journalctl"
+out=$(PATH="$stub:$PATH" unshare -r bash pi/boot.sh --detach 2>&1)
+grep -q 'journalctl -fu nook-boot' <<<"$out" || {
+  echo "a second run did not follow the one already going: $out" >&2
+  exit 1
+}
+grep -q 'systemd-run' <<<"$out" && {
+  echo "a second run started another unit on top of the first: $out" >&2
+  exit 1
+}
+
+echo "boot: survives curl|bash, keeps its flags, prefers a checkout, detaches, joins a run in progress"
