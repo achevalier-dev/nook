@@ -34,7 +34,8 @@ for dir in services/*/; do
     fi
     seen_port[$port]=$name
     # A host-network service has no ports section to publish through.
-    if [[ $(jq -r '.host_network // false' "$dir/nook.json") != true ]]; then
+    if [[ $(jq -r '.host_network // false' "$dir/nook.json") != true ]] &&
+      ! grep -q ':\${[A-Z_]*PORT' "$dir/compose.yaml"; then
       grep -q ":$port:" "$dir/compose.yaml" ||
         { echo "services/$name says port $port but its compose file does not publish it" >&2; bad=1; }
     fi

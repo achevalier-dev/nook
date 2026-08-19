@@ -1,0 +1,155 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{{HOST}}</title>
+<style>
+  /* Warm phosphor on near-black. A box in a cupboard should look like a box in
+     a cupboard, not like a SaaS dashboard. */
+  :root {
+    --ink: #e6dccb;
+    --dim: #8b8172;
+    --glow: #f0b45e;
+    --live: #7fca7f;
+    --bg: #14120f;
+    --card: #1b1815;
+    --edge: #2a2520;
+  }
+  @media (prefers-color-scheme: light) {
+    :root { --ink:#221d16; --dim:#6d6459; --glow:#a86a12; --live:#2f7d3a; --bg:#f3efe6; --card:#fbf8f1; --edge:#e0d8c8; }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 3rem 1.25rem 4rem;
+    background: var(--bg);
+    /* A little grain, so the flat colour has something to sit on. */
+    background-image: radial-gradient(circle at 50% 0%, #ffffff08, transparent 60%);
+    color: var(--ink);
+    font: 15px/1.55 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    -webkit-font-smoothing: antialiased;
+  }
+  main { max-width: 41rem; margin: 0 auto; }
+
+  header { display: flex; align-items: baseline; gap: .6rem; }
+  h1 { font-size: 1.55rem; letter-spacing: -.02em; margin: 0; }
+  .lamp {
+    width: .5rem; height: .5rem; border-radius: 50%;
+    background: var(--live); box-shadow: 0 0 .5rem var(--live);
+    animation: breathe 4s ease-in-out infinite;
+  }
+  .lamp.cold { background: var(--dim); box-shadow: none; animation: none; }
+  @keyframes breathe { 0%,100% { opacity: .35 } 50% { opacity: 1 } }
+  .tag { color: var(--dim); font-size: .8rem; letter-spacing: .12em; text-transform: uppercase; }
+  header p { color: var(--dim); margin: .35rem 0 2.2rem; }
+
+  /* Vitals: physical facts about a real machine, read off it every 20 seconds. */
+  .vitals { display: grid; grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr)); gap: .75rem; margin-bottom: 2.5rem; }
+  .dial { background: var(--card); border: 1px solid var(--edge); border-radius: .6rem; padding: .8rem .9rem; }
+  .dial .k { color: var(--dim); font-size: .68rem; letter-spacing: .14em; text-transform: uppercase; }
+  .dial .v { font-size: 1.45rem; margin-top: .15rem; font-variant-numeric: tabular-nums; }
+  .dial .v small { font-size: .8rem; color: var(--dim); }
+  /* A meter with ticks reads as an instrument; a plain bar reads as a progress
+     indicator, which is a different and more anxious thing. */
+  .meter { position: relative; height: .5rem; margin-top: .55rem; background: #0006; border-radius: 1rem; overflow: hidden; }
+  .meter i { position: absolute; inset: 0 100% 0 0; background: linear-gradient(90deg, var(--glow), var(--glow)); border-radius: 1rem; transition: right 1.2s cubic-bezier(.2,.8,.2,1); }
+  .meter u { position: absolute; inset: 0; background-image: repeating-linear-gradient(90deg, #0000 0 calc(10% - 1px), var(--bg) calc(10% - 1px) 10%); }
+
+  h2 { font-size: .7rem; letter-spacing: .16em; text-transform: uppercase; color: var(--dim); margin: 0 0 .7rem; font-weight: 500; }
+  ul { list-style: none; padding: 0; margin: 0; display: grid; gap: .5rem; }
+  li a {
+    display: flex; align-items: center; gap: .75rem;
+    padding: .85rem 1rem; background: var(--card);
+    border: 1px solid var(--edge); border-radius: .6rem;
+    color: inherit; text-decoration: none;
+    transition: border-color .18s, transform .18s, background .18s;
+  }
+  li a:hover { border-color: var(--glow); transform: translateX(3px); background: color-mix(in srgb, var(--card) 86%, var(--glow)); }
+  li a:active { transform: translateX(1px) scale(.995); }
+  .name { font-weight: 600; }
+  .what { color: var(--dim); margin-left: auto; text-align: right; font-size: .82rem; }
+  .arrow { color: var(--dim); }
+  li a:hover .arrow { color: var(--glow); }
+  .empty { color: var(--dim); padding: .85rem 1rem; border: 1px dashed var(--edge); border-radius: .6rem; }
+  .empty code { color: var(--glow); }
+
+  footer { color: var(--dim); font-size: .76rem; margin-top: 3rem; display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+  footer a { color: var(--dim); }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+
+<main>
+  <header>
+    <h1>{{HOST}}</h1>
+    <span class="lamp cold" id="lamp"></span>
+    <span class="tag" id="uptime">—</span>
+  </header>
+  <p>a small computer, somewhere you left it</p>
+
+  <div class="vitals">
+    <div class="dial">
+      <div class="k">temperature</div>
+      <div class="v"><span id="temp">—</span><small>°C</small></div>
+      <div class="meter"><i id="tempbar"></i><u></u></div>
+    </div>
+    <div class="dial">
+      <div class="k">load</div>
+      <div class="v" id="load">—</div>
+      <div class="meter"><i id="loadbar"></i><u></u></div>
+    </div>
+    <div class="dial">
+      <div class="k">disk</div>
+      <div class="v"><span id="free">—</span><small> free</small></div>
+      <div class="meter"><i id="diskbar"></i><u></u></div>
+    </div>
+    <div class="dial">
+      <div class="k">running</div>
+      <div class="v" id="containers">—</div>
+      <div class="meter"><i id="drivebar"></i><u></u></div>
+    </div>
+  </div>
+
+  <h2>services</h2>
+  <ul>{{ROWS}}</ul>
+
+  <footer>
+    <span>kept by <a href="https://github.com/achevalier-dev/nook">nook</a></span>
+    <span id="stamp">reading…</span>
+  </footer>
+</main>
+
+<script>
+  // Everything below is optional: with no status.json the page is still the
+  // list of links it was before, which is the point of it being a static file.
+  const $ = id => document.getElementById(id);
+  const human = b => {
+    const u = ['B', 'K', 'M', 'G', 'T'];
+    let i = 0, v = b || 0;
+    while (v >= 1024 && i < u.length - 1) { v /= 1024; i++; }
+    return (v >= 10 ? Math.round(v) : v.toFixed(1)) + u[i];
+  };
+  const fill = (el, frac) => { el.style.right = (100 - Math.max(0, Math.min(1, frac)) * 100) + '%'; };
+
+  async function read() {
+    try {
+      const s = await (await fetch('status.json?t=' + Date.now(), { cache: 'no-store' })).json();
+      $('lamp').classList.remove('cold');
+      $('uptime').textContent = 'up ' + (s.uptime || '');
+      $('temp').textContent = s.temp ? s.temp.toFixed(1) : '—';
+      // 30–85°C is the range a Pi actually lives in; anything outside is news.
+      fill($('tempbar'), ((s.temp || 0) - 30) / 55);
+      $('load').textContent = (s.load ?? 0).toFixed(2);
+      fill($('loadbar'), (s.load || 0) / 4);
+      $('free').textContent = human(s.disk?.avail);
+      fill($('diskbar'), (s.disk?.used || 0) / (s.disk?.size || 1));
+      $('containers').textContent = s.containers ?? '—';
+      fill($('drivebar'), s.attached > 0 ? 1 : 0);
+      $('stamp').textContent = 'read ' + new Date().toLocaleTimeString();
+    } catch {
+      $('lamp').classList.add('cold');
+      $('stamp').textContent = 'no vitals — the box may be resting';
+    }
+  }
+  read();
+  setInterval(read, 20000);
+  // Coming back to a tab should not show a minute-old temperature.
+  document.addEventListener('visibilitychange', () => !document.hidden && read());
+</script>

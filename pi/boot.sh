@@ -32,7 +32,7 @@ NOOK_DETACH=${NOOK_DETACH:-0}
 NOOK_AUTO_UPGRADE=${NOOK_AUTO_UPGRADE:-1}
 SKIP=()
 
-MODULES=(10-base 20-tailscale 30-storage 35-disk 40-docker 50-shares 60-usb-gadget 70-upgrade)
+MODULES=(10-base 20-tailscale 30-storage 35-disk 40-docker 45-status 50-shares 60-usb-gadget 70-upgrade)
 
 # Kept whole, because the loop below consumes $@ and the sudo re-exec further
 # down still has to pass the flags on. Without this, `--format` is parsed here
