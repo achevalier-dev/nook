@@ -18,6 +18,7 @@ make_nook() {
   mkdir -p "$NOOK_HOME/$1"
   cat >"$NOOK_HOME/$1/config" <<EOF
 NOOK_HOST=$1
+NOOK_SSH_USER=${3:-}
 NOOK_NAME=$1
 NOOK_DATA=/mnt/nook
 NOOK_TRANSPORT=$2
@@ -25,7 +26,7 @@ NOOK_TARGET_IQN=iqn.2026-08.dev.nook:$1
 EOF
 }
 
-make_nook pi nbd
+make_nook pi nbd admin
 make_nook thinkcentre iscsi
 printf 'pi\n' >"$NOOK_HOME/default"
 
@@ -62,6 +63,9 @@ HOME=$NOOK_HOME write_ssh_config
 config="$NOOK_HOME/.ssh/config"
 [[ $(grep -c '^Host ' "$config") == 2 ]] || { echo "ssh config does not carry both hosts" >&2; exit 1; }
 [[ $(grep -c '^# >>> nook$' "$config") == 1 ]] || { echo "more than one nook block" >&2; exit 1; }
+# The account on the box is rarely the local one, and ssh has to be told.
+grep -q '^	User admin$' "$config" || { echo "the box's ssh user did not reach the config" >&2; exit 1; }
+[[ $(grep -c '^	User ' "$config") == 1 ]] || { echo "a User line appeared for a nook that has none" >&2; exit 1; }
 
 # Forgetting drops the entry and moves the default somewhere that still exists.
 systemctl() { :; }

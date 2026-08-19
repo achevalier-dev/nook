@@ -109,7 +109,7 @@ mounted_at() { findmnt -nro TARGET --source "$1" 2>/dev/null | head -n1; }
 # whenever the set changes. Per-nook blocks would leave a Host entry behind for
 # a box that has been forgotten.
 write_ssh_config() {
-  local file="$HOME/.ssh/config" name host
+  local file="$HOME/.ssh/config" name host user
   mkdir -p "$HOME/.ssh" && chmod 700 "$HOME/.ssh"
   [[ -f $file ]] || : >"$file"
   chmod 600 "$file"
@@ -119,9 +119,11 @@ write_ssh_config() {
       [[ -n $name ]] || continue
       host=$(sed -n 's/^NOOK_HOST=//p' "$(nook_dir "$name")/config" | head -n1)
       [[ -n $host ]] || continue
+      user=$(sed -n 's/^NOOK_SSH_USER=//p' "$(nook_dir "$name")/config" | head -n1)
       cat <<BLOCK
 Host $host
-	HostName $host
+	HostName $host${user:+
+	User $user}
 	# One connection reused by every nook command. A fresh handshake per call is
 	# what makes a status widget feel heavy.
 	ControlMaster auto

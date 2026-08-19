@@ -8,7 +8,7 @@
 BOOT_URL=${NOOK_BOOT_URL:-https://raw.githubusercontent.com/achevalier-dev/nook/main/pi/boot.sh}
 
 cmd_adopt() {
-  local host="" name=""
+  local host="" name="" user=""
   while [[ $# -gt 0 ]]; do
     case $1 in
       --as) name=$2; shift 2 ;;
@@ -17,19 +17,32 @@ cmd_adopt() {
     esac
   done
   host=${host:-$(default_nook_host)}
-  [[ -n $host ]] || die "usage: nook adopt <host> [--as <name>]"
+  [[ -n $host ]] || die "usage: nook adopt [<user>@]<host> [--as <name>]"
+
+  # The account on the box is rarely the one you are logged in as here — a Pi
+  # image ships with its own user — so it may be given, and is remembered.
+  if [[ $host == *@* ]]; then
+    user=${host%%@*}
+    host=${host#*@}
+  fi
 
   need ssh
   need jq
   migrate_single_nook
 
   log "reaching $host"
-  if ! ssh -o BatchMode=yes -o ConnectTimeout=10 "$host" true; then
-    unreachable "$host"
+  # No BatchMode when there is a terminal: the first connection to a box has a
+  # host key nobody has seen yet, and BatchMode turns that question into
+  # "Host key verification failed" instead of letting you answer it.
+  local opts=(-o ConnectTimeout=10)
+  [[ -t 0 && -t 1 ]] || opts+=(-o BatchMode=yes)
+  [[ -n $user ]] && opts+=(-l "$user")
+  if ! ssh "${opts[@]}" "$host" true; then
+    unreachable "$host" "$user"
   fi
 
   local conf
-  conf=$(ssh "$host" cat /etc/nook.conf) ||
+  conf=$(ssh ${user:+-l "$user"} "$host" cat /etc/nook.conf) ||
     die "$host has no /etc/nook.conf — run the boot script there first, or: nook boot $host"
 
   # The box names itself. Two boxes that both answer to "nook" need --as, and
@@ -49,6 +62,9 @@ cmd_adopt() {
   {
     echo "# written by nook adopt on $(date -Is)"
     echo "NOOK_HOST=$host"
+    # Falls back to the box's own NOOK_USER, which its boot script recorded, so
+    # `nook adopt <host>` alone still lands on the right account.
+    echo "NOOK_SSH_USER=${user:-$(sed -n 's/^NOOK_USER=//p' <<<"$conf" | head -n1)}"
     printf '%s\n' "$conf"
   } >"$dir/config"
 
@@ -85,7 +101,7 @@ EOF
 # "cannot ssh" has three quite different causes and only one of them is the box.
 # Naming the right one is the difference between a five-second fix and an hour.
 unreachable() {
-  local host=$1 state=""
+  local host=$1 user=${2:-} state=""
   echo "nook: cannot reach $host" >&2
 
   if ! command -v tailscale >/dev/null; then
@@ -113,7 +129,15 @@ unreachable() {
   fi
 
   echo "  $host is online but not answering SSH." >&2
-  echo "  The box needs 'tailscale up --ssh', which its boot script does — did that run finish?" >&2
+  echo >&2
+  echo "  Try it by hand — that shows the real reason, and answers the host key" >&2
+  echo "  question that a script cannot answer for you:" >&2
+  echo "      ssh ${user:+$user@}$host" >&2
+  echo >&2
+  echo "  If it says the account does not exist, name the one on the box:" >&2
+  echo "      nook adopt admin@$host" >&2
+  echo "  If it hangs or is refused, the box needs 'tailscale up --ssh' — its boot" >&2
+  echo "  script does that, so check the run finished: journalctl -u nook-boot" >&2
   exit 1
 }
 
