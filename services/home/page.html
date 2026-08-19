@@ -86,14 +86,14 @@
   .fill {
     fill: none; stroke: var(--accent); stroke-width: 3.5; stroke-linecap: round;
     filter: drop-shadow(0 0 3px #0f646644);
-    transition: stroke-dasharray .42s cubic-bezier(.22, .61, .36, 1), stroke .6s;
+    transition: stroke .6s;
   }
   .fill.hot { stroke: var(--red); filter: drop-shadow(0 0 4px #dc472688); }
   .tick { stroke: var(--dim); stroke-width: .9; opacity: .55; }
   .tick.major { stroke: var(--ink); stroke-width: 1.6; opacity: .85; }
   .needle {
     stroke: var(--red); stroke-width: 2; stroke-linecap: round;
-    transition: transform .42s cubic-bezier(.22, .61, .36, 1);
+
     /* No transform-origin here on purpose: the rotate() attribute already
        carries its own centre, and a CSS origin is applied on top of it, which
        pivots the needle off the dial. */
@@ -200,45 +200,86 @@
        </svg>`);
   }
 
-  function pose(g, f, hot, ms, ease) {
-    const v = Math.max(0, Math.min(1, f || 0));
-    const fill = g.querySelector('.fill'), needle = g.querySelector('.needle');
-    for (const el of [fill, needle]) {
-      el.style.transitionDuration = ms ? ms + 'ms' : '';
-      el.style.transitionTimingFunction = ease || '';
-    }
-    fill.setAttribute('stroke-dasharray', `${(v * LEN).toFixed(1)} ${LEN.toFixed(1)}`);
-    fill.classList.toggle('hot', !!hot);
-    needle.setAttribute('transform', `rotate(${225 + v * SWEEP} 50 50)`);
-  }
-
-  const gauges = [...document.querySelectorAll('.g')];
+  // A needle is a mass on a spring against a hairspring, and that is how this
+  // one moves: position integrated every frame from a spring pulling toward a
+  // target, with damping. Stepping between CSS transitions was the problem —
+  // each transition eases out at its end and in at the next, so the needle came
+  // to a dead stop between every step. A spring has continuous velocity, so it
+  // never stops until it is done.
   const rand = (lo, hi) => lo + Math.random() * (hi - lo);
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  let ignited = false;
+  const gauges = [...document.querySelectorAll('.g')];
+  const state = new Map();
+  let ignited = false, raf = 0, last = 0;
 
-  // An engine warming, then the throttle. The needle drifts up slowly to about
-  // half, gets blipped past the reading, falls back under it, is blipped again
-  // more gently, and settles. Slow where it should be slow and quick where it
-  // should be quick — one duration for the whole thing is what makes an
-  // animation read as an animation.
-  const EASE_IN = 'cubic-bezier(.4,.02,.6,.3)';   // lazy, like something spinning up
-  const EASE_BLIP = 'cubic-bezier(.1,.85,.25,1)'; // snaps, then eases off
-  const EASE_REST = 'cubic-bezier(.25,.9,.3,1)';
+  for (const g of gauges) {
+    state.set(g, {
+      x: 0, v: 0, target: 0, hot: false,
+      // No two of them are the same mechanism, so no two settle identically.
+      k: rand(150, 190), c: rand(17, 21),
+      fill: g.querySelector('.fill'), needle: g.querySelector('.needle'),
+    });
+  }
 
+  function paint(s) {
+    const v = Math.max(0, Math.min(1, s.x));
+    s.fill.setAttribute('stroke-dasharray', `${(v * LEN).toFixed(2)} ${LEN.toFixed(1)}`);
+    s.fill.classList.toggle('hot', !!s.hot);
+    s.needle.setAttribute('transform', `rotate(${(225 + v * SWEEP).toFixed(3)} 50 50)`);
+  }
+
+  function frame(now) {
+    // Clamped, so a backgrounded tab does not come back and integrate a
+    // half-second in one step, which throws the needle across the dial.
+    const dt = Math.min(.032, (now - last) / 1000) || .016;
+    last = now;
+
+    let moving = false;
+    for (const s of state.values()) {
+      const dx = s.target - s.x;
+      // Loose enough that the loop actually parks. A dashboard left open on a
+      // second monitor should not hold a rendering thread awake all day for
+      // motion nobody can see.
+      if (Math.abs(dx) < 4e-4 && Math.abs(s.v) < 6e-3) {
+        if (s.x !== s.target) { s.x = s.target; s.v = 0; paint(s); }
+        continue;
+      }
+      s.v += (s.k * dx - s.c * s.v) * dt;
+      s.x += s.v * dt;
+      paint(s);
+      moving = true;
+    }
+    raf = moving ? requestAnimationFrame(frame) : 0;
+  }
+
+  function run() {
+    if (!raf) { last = performance.now(); raf = requestAnimationFrame(frame); }
+  }
+
+  function aim(g, target, hot) {
+    const s = state.get(g);
+    if (!s) return;
+    s.target = Math.max(0, Math.min(1, target));
+    s.hot = hot;
+    run();
+  }
+
+  // An engine warming, then the throttle: the target drifts up to about half,
+  // is pushed past the reading, falls under it, is pushed again more gently and
+  // is let go. The spring turns those five targets into one unbroken movement.
   function ignite(g, v, hot) {
-    const blip = rand(.1, .17), dip = rand(.14, .22);
-    const steps = [
-      [rand(80, 240), v * rand(.45, .6), rand(560, 720), EASE_IN],
-      [rand(620, 760), Math.min(1, v + blip), rand(200, 280), EASE_BLIP],
-      [rand(260, 340), Math.max(0, v * (1 - dip)), rand(360, 460), EASE_BLIP],
-      [rand(380, 460), Math.min(1, v + blip * .35), rand(180, 230), EASE_BLIP],
-      [rand(220, 280), v, rand(460, 600), EASE_REST],
+    const blip = rand(.1, .16), dip = rand(.12, .2);
+    const plan = [
+      [rand(60, 200), v * rand(.42, .56)],
+      [rand(700, 820), Math.min(1, v + blip)],
+      [rand(300, 380), Math.max(0, v * (1 - dip))],
+      [rand(340, 420), Math.min(1, v + blip * .3)],
+      [rand(260, 330), v],
     ];
     let at = 0;
-    for (const [delay, value, ms, ease] of steps) {
+    for (const [delay, value] of plan) {
       at += delay;
-      setTimeout(() => pose(g, value, hot, ms, ease), at);
+      setTimeout(() => aim(g, value, hot), at);
     }
   }
 
@@ -247,9 +288,15 @@
     if (!g) return;
     const v = Math.max(0, Math.min(1, frac || 0));
     g.querySelector('.read span').textContent = text;
-    // The first reading is the one worth arriving at; after that a needle just
-    // moves to where it now is.
-    if (ignited || reduced) pose(g, v, hot);
+
+    if (reduced) {
+      const s = state.get(g);
+      s.x = s.target = v; s.hot = hot; paint(s);
+      return;
+    }
+    // The first reading is the one worth arriving at; after that the needle
+    // just moves to where the box now is.
+    if (ignited) aim(g, v, hot);
     else ignite(g, v, hot);
   }
 
