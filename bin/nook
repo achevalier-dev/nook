@@ -1,542 +1,134 @@
-#!/bin/bash
-# nook — your Raspberry Pi, from this machine.
-#
-# Two ways to reach the same disk, and the difference matters:
-#
-#   nook mount    $NOOK_DATA/files as a folder over SFTP. Many machines at once.
-#   nook attach   the disk image as a real block device. One machine at a time.
-#
-# Everything rides Tailscale, and SSH is authenticated by tailnet identity, so
-# there are no keys here to manage.
+#!/usr/bin/env bash
+# nook — a Raspberry Pi you reach from anywhere: a shared folder, a network
+# drive, and containers you run from here. One config file under ~/.nook.
+# No daemon, no database.
 
 set -euo pipefail
 
-CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/nook"
-CONFIG="$CONFIG_DIR/config"
-
-NOOK_HOST=nook
-NOOK_USER=""
-NOOK_DATA=/mnt/nook
-NOOK_MOUNT="$HOME/nook"
-NOOK_TRANSPORT=""
-NOOK_TARGET_IQN=""
-NOOK_IQN_BASE=iqn.2026-08.dev.nook
-NOOK_LABEL=NOOK
-
-# shellcheck disable=SC1090
-[[ -r $CONFIG ]] && . "$CONFIG"
-
-INITIATOR_IQN="$NOOK_IQN_BASE:$(hostname)"
-NBD_DEV=/dev/nbd0
-
-die() { echo "nook: $1" >&2; exit 1; }
-say() { printf '%s\n' "$*"; }
-
-# Menu rows call the same CLI as the terminal does, so anything worth saying is
-# said twice: once on stdout, once as a notification when omarchy is around.
-notify() {
-  say "$1"
-  command -v omarchy-notification-send >/dev/null &&
-    omarchy-notification-send -g "󰋊" "nook" "$1" >/dev/null 2>&1 || true
-}
-
-need() { command -v "$1" >/dev/null || die "$1 is not installed"; }
-
-configured() { [[ -r $CONFIG ]] || die "not adopted yet — run: nook adopt"; }
-
-remote() { ssh -o BatchMode=yes "$NOOK_HOST" "$@"; }
-
-# ── where the block device shows up ───────────────────────────────────────────
-# Asked rather than remembered: the kernel picks the letter, and it moves.
-disk_device() {
-  if [[ $NOOK_TRANSPORT == nbd ]]; then
-    # An idle /dev/nbd0 exists but reports zero size, so its presence proves
-    # nothing — the size is what says a connection is live.
-    [[ -b $NBD_DEV ]] || return 1
-    [[ $(lsblk -bno SIZE "$NBD_DEV" 2>/dev/null | head -n1) -gt 0 ]] || return 1
-    echo "$NBD_DEV"
-    return 0
-  fi
-  local path
-  for path in /dev/disk/by-path/*iscsi*"${NOOK_TARGET_IQN##*:}"*-lun-0; do
-    if [[ -e $path ]]; then
-      readlink -f "$path"
-      return 0
-    fi
-  done
-  return 1
-}
-
-wait_for_disk() {
-  local tries=0
-  until [[ -n $(disk_device) ]]; do
-    ((tries++ < 40)) || die "the disk never appeared — check: nook doctor"
-    sleep 0.25
-  done
-  disk_device
-}
-
-mounted_at() { findmnt -nro TARGET --source "$1" 2>/dev/null | head -n1; }
-
-# ── adopt ─────────────────────────────────────────────────────────────────────
-cmd_adopt() {
-  local host=${1:-$NOOK_HOST}
-  need ssh
-
-  say "reaching $host…"
-  ssh -o BatchMode=yes -o ConnectTimeout=10 "$host" true ||
-    die "cannot ssh to $host — is it on the tailnet, and is MagicDNS on?"
-
-  local conf
-  conf=$(ssh "$host" cat /etc/nook.conf) || die "$host has no /etc/nook.conf — run the boot script there first"
-
-  mkdir -p "$CONFIG_DIR"
-  {
-    printf '# written by `nook adopt` on %s\n' "$(date -Is)"
-    printf 'NOOK_HOST=%s\n' "$host"
-    printf '%s\n' "$conf"
-    printf 'NOOK_MOUNT=%s\n' "$NOOK_MOUNT"
-  } >"$CONFIG"
-  # shellcheck disable=SC1090
-  . "$CONFIG"
-
-  ssh_config_block "$host"
-  if [[ $NOOK_TRANSPORT == iscsi ]]; then
-    setup_iscsi_initiator
-  fi
-  setup_docker_context
-  setup_mount_unit
-  setup_bookmark
-
-  notify "adopted $host"
-  cat <<NOTE
-
-  nook adopt is done. From here:
-
-      nook mount     $NOOK_DATA/files at $NOOK_MOUNT — shared, many machines
-      nook attach    the disk as a real drive — yours alone while attached
-      nook up DIR    run a compose file from this machine, on the nook
-
-NOTE
-}
-
-# Its own block, marked, so re-adopting replaces it instead of stacking copies —
-# and so the rest of your ssh config is never touched.
-ssh_config_block() {
-  local host=$1 file="$HOME/.ssh/config" begin="# >>> nook" end="# <<< nook"
-  mkdir -p "$HOME/.ssh" && chmod 700 "$HOME/.ssh"
-  touch "$file" && chmod 600 "$file"
-
-  local block
-  block=$(cat <<BLOCK
-$begin
-Host $host
-	HostName $host
-	# One connection reused by every nook command; a fresh TCP+SSH handshake per
-	# call is what makes a status widget feel slow.
-	ControlMaster auto
-	ControlPath ~/.ssh/nook-%r@%h:%p
-	ControlPersist 5m
-	ServerAliveInterval 15
-	ServerAliveCountMax 3
-$end
-BLOCK
-)
-  python3 - "$file" "$begin" "$end" <<PY
-import pathlib, re, sys
-path, begin, end = pathlib.Path(sys.argv[1]), sys.argv[2], sys.argv[3]
-block = """$block
-"""
-text = path.read_text()
-if begin in text and end in text:
-    text = re.sub(re.escape(begin) + r".*?" + re.escape(end) + r"\n?", lambda m: block, text, flags=re.S)
-else:
-    # Host blocks are first-match-wins, so ours goes on top or a wildcard Host
-    # further up would swallow it.
-    text = block + "\n" + text
-path.write_text(text)
-PY
-  say "ssh config updated ($file)"
-}
-
-setup_iscsi_initiator() {
-  command -v iscsiadm >/dev/null || die "install open-iscsi first (sudo pacman -S open-iscsi)"
-  local file=/etc/iscsi/initiatorname.iscsi
-  if ! grep -qxF "InitiatorName=$INITIATOR_IQN" "$file" 2>/dev/null; then
-    say "setting this machine's iSCSI name (needs sudo)"
-    printf 'InitiatorName=%s\n' "$INITIATOR_IQN" | sudo tee "$file" >/dev/null
-    sudo systemctl restart iscsid 2>/dev/null || true
-  fi
-  sudo systemctl enable --now iscsid >/dev/null
-  remote sudo nook-target allow "$INITIATOR_IQN"
-}
-
-setup_docker_context() {
-  command -v docker >/dev/null || return 0
-  docker context inspect nook >/dev/null 2>&1 &&
-    docker context update nook --docker "host=ssh://$NOOK_HOST" >/dev/null ||
-    docker context create nook --docker "host=ssh://$NOOK_HOST" >/dev/null
-  say "docker context \"nook\" points at ssh://$NOOK_HOST"
-}
-
-setup_mount_unit() {
-  systemctl --user enable nook-mount.service >/dev/null 2>&1 ||
-    say "note: nook-mount.service is not installed — run install.sh"
-}
-
-# So the folder shows up in the file manager sidebar rather than only in $HOME.
-setup_bookmark() {
-  local file="${XDG_CONFIG_HOME:-$HOME/.config}/gtk-3.0/bookmarks"
-  mkdir -p "$(dirname "$file")"
-  touch "$file"
-  grep -qxF "file://$NOOK_MOUNT nook" "$file" || printf 'file://%s nook\n' "$NOOK_MOUNT" >>"$file"
-}
-
-# ── the shared folder ─────────────────────────────────────────────────────────
-cmd_mount() {
-  configured
-  need sshfs
-  if mountpoint -q "$NOOK_MOUNT"; then
-    say "already mounted at $NOOK_MOUNT"
-    return 0
-  fi
-  mkdir -p "$NOOK_MOUNT"
-  systemctl --user start nook-mount.service 2>/dev/null ||
-    sshfs -o reconnect,ServerAliveInterval=15,ServerAliveCountMax=3,idmap=user \
-      "$NOOK_HOST:$NOOK_DATA/files" "$NOOK_MOUNT"
-  notify "mounted at $NOOK_MOUNT"
-}
-
-cmd_umount() {
-  configured
-  systemctl --user stop nook-mount.service 2>/dev/null || true
-  if mountpoint -q "$NOOK_MOUNT"; then
-    fusermount3 -u "$NOOK_MOUNT"
-  fi
-  notify "unmounted $NOOK_MOUNT"
-}
-
-# ── the network flash drive ───────────────────────────────────────────────────
-cmd_attach() {
-  configured
-  [[ -n $NOOK_TRANSPORT && $NOOK_TRANSPORT != none ]] || die "this nook has no disk export"
-
-  local dev
-  dev=$(disk_device || true)
-  if [[ -n $dev ]]; then
-    say "already attached at $dev"
-    cmd_disk
-    return 0
-  fi
-
-  # A block device carries a filesystem that assumes single ownership. Refusing
-  # here is cheaper than recovering a filesystem two machines wrote to.
-  local holders
-  holders=$(remote nook-target info | awk '/^attached/ { $1 = ""; print }' | xargs || true)
-  if [[ -n $holders && $holders != none ]]; then
-    die "another machine has the disk attached ($holders) — eject it there first"
-  fi
-
-  if [[ $NOOK_TRANSPORT == nbd ]]; then
-    need nbd-client
-    sudo modprobe nbd
-    # -persist keeps the device alive across a suspend or a flaky link instead of
-    # handing the filesystem an I/O error the moment a packet is late.
-    sudo nbd-client "$NOOK_HOST" 10809 "$NBD_DEV" -name nook -persist
-  else
-    sudo iscsiadm -m discovery -t st -p "$NOOK_HOST" >/dev/null
-    sudo iscsiadm -m node -T "$NOOK_TARGET_IQN" -p "$NOOK_HOST" --login >/dev/null
-    sudo iscsiadm -m node -T "$NOOK_TARGET_IQN" -p "$NOOK_HOST" \
-      -o update -n node.startup -v automatic >/dev/null
-  fi
-
-  dev=$(wait_for_disk)
-
-  # A freshly created image has no filesystem, and mkfs is not something to do
-  # on the user's behalf without asking.
-  if ! sudo blkid "$dev" >/dev/null 2>&1; then
-    notify "attached at $dev — no filesystem yet, run: nook format"
-    return 0
-  fi
-
-  udisksctl mount -b "$dev" 2>/dev/null || sudo mount "$dev" /mnt
-  notify "attached at $(mounted_at "$dev")"
-}
-
-cmd_eject() {
-  configured
-  local dev target
-  dev=$(disk_device || true)
-  [[ -n $dev ]] || { say "nothing attached"; return 0; }
-
-  target=$(mounted_at "$dev")
-  # Unmount before tearing down the transport, so the filesystem gets to flush.
-  # Pulling the device out from under a dirty filesystem is how images rot.
-  if [[ -n $target ]]; then
-    udisksctl unmount -b "$dev" 2>/dev/null || sudo umount "$dev"
-  fi
-  sync
-
-  if [[ $NOOK_TRANSPORT == nbd ]]; then
-    sudo nbd-client -d "$NBD_DEV"
-  else
-    sudo iscsiadm -m node -T "$NOOK_TARGET_IQN" -p "$NOOK_HOST" \
-      -o update -n node.startup -v manual >/dev/null
-    sudo iscsiadm -m node -T "$NOOK_TARGET_IQN" -p "$NOOK_HOST" --logout >/dev/null
-  fi
-  notify "ejected"
-}
-
-cmd_format() {
-  configured
-  local dev
-  dev=$(disk_device || true)
-  [[ -n $dev ]] || die "attach the disk first: nook attach"
-
-  cat <<WARN
-
-  This erases everything on the nook disk at $dev.
-  It is the network drive, not the shared $NOOK_DATA/files folder, and not the
-  nook's own SD card — but whatever is on it now is gone for good.
-
-WARN
-  read -rp "  Type the label \"$NOOK_LABEL\" to confirm: " answer
-  [[ $answer == "$NOOK_LABEL" ]] || die "not confirmed"
-
-  local target
-  target=$(mounted_at "$dev")
-  if [[ -n $target ]]; then
-    udisksctl unmount -b "$dev" 2>/dev/null || sudo umount "$dev"
-  fi
-
-  # No partition table on purpose: one filesystem filling the device means no
-  # partprobe round trip over the network, and `nook grow` stays a one-liner.
-  sudo mkfs.ext4 -q -L "$NOOK_LABEL" "$dev"
-  # ext4 reserves 5% for root, which is pointless on a data disk and costs
-  # 12GB out of 256.
-  sudo tune2fs -m 0 "$dev" >/dev/null
-  udisksctl mount -b "$dev" >/dev/null
-  notify "formatted and mounted at $(mounted_at "$dev")"
-}
-
-cmd_grow() {
-  configured
-  local dev
-  dev=$(disk_device || true)
-  [[ -n $dev ]] || die "attach the disk first: nook attach"
-  sudo resize2fs "$dev"
-  say "filesystem now fills the device"
-}
-
-cmd_disk() {
-  configured
-  local dev local_only=0
-  # --local answers from this machine alone. The bar widget polls this, and an
-  # extra SSH round trip per poll is exactly what makes a widget feel heavy.
-  [[ ${1:-} == --local ]] && local_only=1
-  dev=$(disk_device || true)
-  if [[ -z $dev ]]; then
-    say "disk       not attached ($NOOK_TRANSPORT)"
-  else
-    local at
-    at=$(mounted_at "$dev")
-    say "disk       $dev via $NOOK_TRANSPORT"
-    say "mounted    ${at:-no}"
-  fi
-  if ((local_only == 0)); then
-    remote nook-target info
-  fi
-}
-
-# ── docker ────────────────────────────────────────────────────────────────────
-cmd_up() {
-  configured
-  local dir=${1:-.}
-  need docker
-  DOCKER_CONTEXT=nook docker compose --project-directory "$dir" up -d --remove-orphans
-}
-
-cmd_down() {
-  configured
-  DOCKER_CONTEXT=nook docker compose --project-directory "${1:-.}" down
-}
-
-cmd_ps() { configured; DOCKER_CONTEXT=nook docker ps; }
-
-cmd_logs() {
-  configured
-  [[ ${1:-} ]] || { DOCKER_CONTEXT=nook docker compose logs -f --tail 100; return; }
-  DOCKER_CONTEXT=nook docker logs -f --tail 100 "$1"
-}
-
-# ── files and code ────────────────────────────────────────────────────────────
-cmd_push() {
-  configured
-  [[ ${1:-} ]] || die "usage: nook push SRC [DEST]"
-  local dest=${2:-files/}
-  rsync -a --info=progress2 --partial "$1" "$NOOK_HOST:$NOOK_DATA/$dest"
-}
-
-cmd_pull() {
-  configured
-  [[ ${1:-} ]] || die "usage: nook pull SRC [DEST]"
-  rsync -a --info=progress2 --partial "$NOOK_HOST:$NOOK_DATA/$1" "${2:-.}"
-}
-
-cmd_code() {
-  configured
-  local path=${1:-$NOOK_DATA/files}
-  command -v code >/dev/null || die "no 'code' on PATH — try: nook ssh"
-  code --remote "ssh-remote+$NOOK_HOST" "$path"
-}
-
-# ── obsidian ──────────────────────────────────────────────────────────────────
-# A bare git repo, not a sync daemon: the vault gets history, conflicts are git
-# conflicts you can actually resolve, and it works offline by construction.
-cmd_vault() {
-  configured
-  case ${1:-} in
-  init)
-    local name=${2:-main}
-    remote "git init --bare --quiet $NOOK_DATA/vaults/$name.git && echo ok" >/dev/null
-    cat <<NOTE
-  vault "$name" ready.
-
-  In the vault directory on this machine:
-
-      git init
-      git remote add nook $NOOK_HOST:$NOOK_DATA/vaults/$name.git
-
-  Then in Obsidian, install the Git plugin and set:
-
-      auto commit-and-sync   5 minutes
-      pull on startup        on
-
-NOTE
-    ;;
-  list) remote "ls -1 $NOOK_DATA/vaults 2>/dev/null | sed 's/\.git$//'" ;;
-  *) die "usage: nook vault init [NAME] | nook vault list" ;;
-  esac
-}
-
-# ── status ────────────────────────────────────────────────────────────────────
-cmd_status() {
-  configured
-  local json
-  json=$(remote nook-info 2>/dev/null) || die "$NOOK_HOST is not answering"
-
-  if [[ ${1:-} == --json ]]; then
-    printf '%s\n' "$json"
-    return 0
-  fi
-
-  jq -r '
-    "host       \(.name)  ·  up \(.uptime)",
-    "load       \(.load)   temp \(.temp)°C",
-    "disk       \((.disk.used/1073741824)|floor)G used of \((.disk.size/1073741824)|floor)G  ·  \((.disk.avail/1073741824)|floor)G free",
-    "containers \(.containers) running",
-    "drive      \(.transport), \(if .attached > 0 then "attached by \(.attached)" else "free" end)"
-  ' <<<"$json"
-
-  if mountpoint -q "$NOOK_MOUNT"; then
-    say "folder     mounted at $NOOK_MOUNT"
-  else
-    say "folder     not mounted"
-  fi
-
-  local dev at
-  dev=$(disk_device || true)
-  if [[ -n $dev ]]; then
-    at=$(mounted_at "$dev")
-    say "drive here $dev${at:+ at $at}"
-  fi
-  return 0
-}
-
-cmd_doctor() {
-  configured
-  local ok=0 peer
-  check() { printf '%-14s %s\n' "$1" "$2"; }
-
-  if command -v tailscale >/dev/null; then
-    peer=$(tailscale status --json 2>/dev/null |
-      jq -r --arg h "$NOOK_HOST" '.Peer[]? | select(.HostName == $h) |
-        if .Online then "online, \(.TailscaleIPs[0])" else "offline" end' | head -n1)
-    check tailscale "${peer:-peer \"$NOOK_HOST\" not in this tailnet}"
-  else
-    check tailscale "not installed"
-  fi
-
-  if ssh -o BatchMode=yes -o ConnectTimeout=5 "$NOOK_HOST" true 2>/dev/null; then
-    check ssh ok
-  else
-    check ssh unreachable
-    ok=1
-  fi
-  check transport "$NOOK_TRANSPORT"
-  if [[ $NOOK_TRANSPORT == iscsi ]]; then
-    command -v iscsiadm >/dev/null && check open-iscsi "installed" || { check open-iscsi "missing — pacman -S open-iscsi"; ok=1; }
-    check initiator "$(sudo grep -h InitiatorName /etc/iscsi/initiatorname.iscsi 2>/dev/null | cut -d= -f2-)"
-  elif [[ $NOOK_TRANSPORT == nbd ]]; then
-    command -v nbd-client >/dev/null && check nbd "installed" || { check nbd "missing — pacman -S nbd"; ok=1; }
-  fi
-  command -v sshfs >/dev/null && check sshfs "installed" || { check sshfs "missing — pacman -S sshfs"; ok=1; }
-  command -v docker >/dev/null && check docker "context $(docker context inspect nook >/dev/null 2>&1 && echo present || echo missing)" || check docker "not installed"
-  return $ok
-}
+# Resolve this file through any symlinks before anything else, without GNU
+# readlink -f, which macOS does not have.
+_self=${BASH_SOURCE[0]}
+while [[ -L $_self ]]; do
+  _link=$(readlink "$_self")
+  if [[ $_link == /* ]]; then _self=$_link; else _self=$(dirname "$_self")/$_link; fi
+done
+NOOK_BIN=$(cd -- "$(dirname -- "$_self")" && pwd)/$(basename "$_self")
+ROOT=$(cd -- "$(dirname -- "$NOOK_BIN")/.." && pwd)
+
+source "$ROOT/lib/common.sh"
 
 usage() {
-  cat <<'USAGE'
-nook — your Pi, from here
+  cat <<'EOF'
+nook — your Raspberry Pi, from here
 
-  adopt [HOST]        pair with a nook that has already run the boot script
-  status [--json]     temperature, disk, containers, who holds the drive
-  doctor              check every moving part and say which one is broken
+  nook adopt                pair with a nook that has run the boot script
+  nook status               temperature, disk, containers, who holds the drive
+  nook doctor               check every moving part and name the broken one
 
-  mount               shared folder at ~/nook (many machines at once)
-  umount
+  nook mount                the shared folder at ~/nook — many machines at once
+  nook attach               the drive as a real block device — one at a time
+  nook eject                flush it and hand it back
 
-  attach              the drive, as a real block device (one machine at a time)
-  eject
-  format              make a filesystem on the drive — destructive
-  grow                after `nook-target resize`, fill the new space
-  disk                what the drive is doing
+  nook up [dir]             docker compose up -d, running over there
+  nook push <src> [dest]    rsync into the shared folder
+  nook vault init [name]    a bare git repo for an Obsidian vault
+  nook ssh                  a shell on the nook
 
-  up [DIR]            docker compose up -d, running on the nook
-  down [DIR]
-  ps
-  logs [SERVICE]
-
-  push SRC [DEST]     rsync into the shared folder
-  pull SRC [DEST]
-  code [PATH]         open the nook in VS Code over SSH
-  ssh [ARGS…]
-
-  vault init [NAME]   a bare git repo for an Obsidian vault
-  vault list
-USAGE
+  nook help --all           every command, including the rare ones
+EOF
 }
 
-case ${1:-} in
-adopt) shift; cmd_adopt "$@" ;;
-status) shift; cmd_status "$@" ;;
-doctor) cmd_doctor ;;
-mount) cmd_mount ;;
-umount | unmount) cmd_umount ;;
-attach) cmd_attach ;;
-eject | detach) cmd_eject ;;
-format) cmd_format ;;
-grow) cmd_grow ;;
-disk) shift; cmd_disk "$@" ;;
-up) shift; cmd_up "$@" ;;
-down) shift; cmd_down "$@" ;;
-ps) cmd_ps ;;
-logs) shift; cmd_logs "$@" ;;
-push) shift; cmd_push "$@" ;;
-pull) shift; cmd_pull "$@" ;;
-code) shift; cmd_code "$@" ;;
-ssh) shift; configured; exec ssh "$NOOK_HOST" "$@" ;;
-vault) shift; cmd_vault "$@" ;;
-"" | -h | --help | help) usage ;;
-*) usage >&2; exit 2 ;;
+usage_all() {
+  cat <<'EOF'
+nook — your Raspberry Pi, from here
+
+Setup
+  nook adopt [<host>]                   pair with a nook, or re-read its config
+  nook boot <host> [-- <boot flags>]    run the boot script on a Pi over SSH
+  nook version                          which version is installed
+
+The shared folder — many machines at once
+  nook mount                            /mnt/nook/files at ~/nook, over SFTP
+  nook umount
+  nook push <src> [dest]                rsync into the shared folder
+  nook pull <src> [dest]                and back out again
+  nook code [path]                      open the nook in VS Code over SSH
+
+The drive — exactly one machine at a time
+  nook attach                           bring it up here, refusing if held
+  nook eject                            unmount, sync, disconnect
+  nook disk [--local]                   transport, size, who is attached
+  nook format                           erase it and make a filesystem — asks
+  nook grow                             after a resize, fill the new space
+
+Containers
+  nook up [dir]                         compose up -d, on the nook
+  nook down [dir]
+  nook ps
+  nook logs [service]
+
+Obsidian
+  nook vault init [name]                a bare git repo on the nook
+  nook vault list
+
+Everything else
+  nook status [--json]                  one screen, or the JSON behind it
+  nook doctor                           check every moving part
+  nook ssh [args…]                      a shell, or one command
+  NOOK_HOME=<dir> nook …                use a different config directory
+EOF
+}
+
+cmd=${1:-}
+[[ $# -gt 0 ]] && shift
+
+# Bare `nook` prints the short list; there is no menu to draw and no state to
+# guess at.
+[[ -z $cmd ]] && cmd=help
+
+case $cmd in
+  adopt | boot)
+    source "$ROOT/lib/adopt.sh"
+    "cmd_$cmd" "$@"
+    ;;
+  mount | umount | unmount | push | pull | code)
+    source "$ROOT/lib/folder.sh"
+    [[ $cmd == unmount ]] && cmd=umount
+    "cmd_$cmd" "$@"
+    ;;
+  attach | eject | detach | format | grow | disk)
+    source "$ROOT/lib/drive.sh"
+    [[ $cmd == detach ]] && cmd=eject
+    "cmd_$cmd" "$@"
+    ;;
+  up | down | ps | logs)
+    source "$ROOT/lib/containers.sh"
+    "cmd_$cmd" "$@"
+    ;;
+  vault)
+    source "$ROOT/lib/vault.sh"
+    cmd_vault "$@"
+    ;;
+  status | doctor)
+    # drive.sh for disk_device: both answers include whether the drive is
+    # attached *here*, which only this machine can say.
+    source "$ROOT/lib/drive.sh"
+    source "$ROOT/lib/status.sh"
+    "cmd_$cmd" "$@"
+    ;;
+  ssh)
+    load_config
+    exec ssh "$NOOK_HOST" "$@"
+    ;;
+  help | -h | --help)
+    if [[ ${1:-} == --all || ${1:-} == -a ]]; then usage_all; else usage; fi
+    ;;
+  version | -v | --version)
+    need jq
+    echo "nook $(jq -r '.version // "unknown"' "$ROOT/manifest.json")"
+    ;;
+  *)
+    usage >&2
+    die "unknown command: $cmd"
+    ;;
 esac

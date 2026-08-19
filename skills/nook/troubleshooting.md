@@ -12,7 +12,7 @@ and the Docker context. It exits non-zero when something is broken.
 
 ## By symptom
 
-**`nook: not adopted yet`** — `~/.config/nook/config` is missing. Run
+**`nook: not adopted yet`** — `~/.nook/config` is missing. Run
 `nook adopt`. If the Pi has never run the boot script, `adopt` will say so.
 
 **`cannot ssh to <host>`** — check `tailscale status` on both ends. If the peer

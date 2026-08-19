@@ -1,42 +1,14 @@
 {
   "schemaVersion": 1,
-  "id": "io.github.achevalier-dev.nook",
+  "id": "io.github.achevalier-dev.nook-cli",
   "name": "nook",
   "version": "1.0.0",
   "author": "achevalier-dev",
   "license": "MIT",
-  "description": "Your Raspberry Pi in the Omarchy bar: reachable anywhere, a shared folder, and a network drive that mounts like a USB stick.",
-  "kinds": [
-    "bar-widget"
-  ],
+  "description": "A Raspberry Pi you reach from anywhere: a shared folder over SFTP, a network drive that mounts like a USB stick, containers you run from your own machine, and Obsidian vaults as bare git repos.",
+  "kinds": ["cli", "skill"],
   "entryPoints": {
-    "barWidget": "NookPanel.qml"
-  },
-  "barWidget": {
-    "displayName": "nook",
-    "description": "Shows whether your nook is reachable and whether its drive is attached here. The panel carries temperature, disk use, containers, and the mount and attach actions.",
-    "category": "System",
-    "allowMultiple": false,
-    "defaultSection": "right",
-    "defaults": {
-      "pollSeconds": 60,
-      "warnTemp": 70
-    },
-    "schema": [
-      {
-        "key": "pollSeconds",
-        "type": "number",
-        "label": "Refresh interval",
-        "description": "How often to ask the nook how it is doing. Each check is one SSH round trip over a reused connection.",
-        "defaultValue": 60
-      },
-      {
-        "key": "warnTemp",
-        "type": "number",
-        "label": "Temperature warning",
-        "description": "Colour the glyph when the CPU goes above this many degrees.",
-        "defaultValue": 70
-      }
-    ]
+    "cli": "bin/nook",
+    "skill": "skills/nook/SKILL.md"
   }
 }

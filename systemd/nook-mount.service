@@ -7,7 +7,7 @@ After=network-online.target
 Wants=network-online.target
 
 [Service]
-EnvironmentFile=%h/.config/nook/config
+EnvironmentFile=%h/.nook/config
 ExecStartPre=/usr/bin/mkdir -p %h/nook
 # -f keeps sshfs in the foreground so systemd tracks the real process; without
 # it the unit thinks the mount died the moment sshfs forks.

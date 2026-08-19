@@ -1,0 +1,11 @@
+{
+  "name": "nook",
+  "description": "A Raspberry Pi you reach from anywhere: a shared folder, a network drive that mounts like a USB stick, containers run from your own machine, and Obsidian vaults as bare git repos.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Antoine Chevalier",
+    "url": "https://github.com/achevalier-dev"
+  },
+  "homepage": "https://github.com/achevalier-dev/nook",
+  "license": "MIT"
+}

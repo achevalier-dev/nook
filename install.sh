@@ -1,45 +1,85 @@
-#!/bin/bash
-# Installs the nook CLI, the mount unit, and the Omarchy menu rows on this
-# machine. Nothing here touches the Pi — that is `nook adopt`.
+#!/usr/bin/env bash
+# Links nook onto PATH, installs the Claude skill, the mount unit and the udev
+# rule. Safe to re-run: everything is a symlink or an overwrite.
 #
-# Safe to re-run: the menu block is replaced in place, never duplicated.
+# This installs the client. The Pi side is pi/boot.sh, run over there.
 
 set -euo pipefail
 
-NAME="nook"
 REPO=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 BIN_DIR="$HOME/.local/bin"
-UNIT_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
-MENU="$HOME/.config/omarchy/extensions/omarchy-menu.jsonc"
+SKILL_DIR="$HOME/.claude/skills"
+UNIT_DIR="$HOME/.config/systemd/user"
 
-for tool in ssh rsync jq; do
-  command -v "$tool" >/dev/null || echo "warning: $tool is not on PATH" >&2
-done
-command -v sshfs >/dev/null || echo "note: sshfs is missing — 'nook mount' needs it (pacman -S sshfs)" >&2
-command -v udisksctl >/dev/null || echo "note: udisks2 is missing — 'nook attach' will fall back to sudo mount" >&2
+# Say exactly what to run on this machine, rather than naming a missing tool
+# and leaving the reader to work it out.
+pkg_hint() {
+  case "$1" in
+    pacman) echo "sudo pacman -S $2" ;;
+    apt) echo "sudo apt install $3" ;;
+    dnf) echo "sudo dnf install $3" ;;
+    *) echo "install $2" ;;
+  esac
+}
+
+MGR=none
+command -v pacman >/dev/null && MGR=pacman
+[[ $MGR == none ]] && command -v apt >/dev/null && MGR=apt
+[[ $MGR == none ]] && command -v dnf >/dev/null && MGR=dnf
+
+missing=()
+#          command    arch name  debian/fedora name
+check() {
+  command -v "$1" >/dev/null && return 0
+  missing+=("$1")
+  echo "missing: $1 — $(pkg_hint "$MGR" "$2" "$3")" >&2
+}
+
+check ssh openssh openssh-client
+check jq jq jq
+check rsync rsync rsync
+check sshfs sshfs sshfs
+check udisksctl udisks2 udisks2
+
+if [[ ${#missing[@]} -gt 0 ]]; then
+  echo >&2
+  echo "nook is installed, but install the above before using it." >&2
+  echo >&2
+fi
+
+# The transport is decided by the Pi's kernel, not by preference, so which of
+# these you need is not knowable until `nook adopt` has read its config.
+command -v iscsiadm >/dev/null || command -v nbd-client >/dev/null ||
+  echo "note: 'nook attach' needs open-iscsi or nbd — 'nook doctor' names the one your nook uses" >&2
 
 mkdir -p "$BIN_DIR"
-ln -sf "$REPO/bin/$NAME" "$BIN_DIR/$NAME"
-echo "linked $BIN_DIR/$NAME -> $REPO/bin/$NAME"
+ln -sf "$REPO/bin/nook" "$BIN_DIR/nook"
+echo "linked $BIN_DIR/nook -> $REPO/bin/nook"
 
-SKILL_DIR="$HOME/.claude/skills"
+# Symlinked as a directory, not file by file: the skill is SKILL.md plus five
+# topic guides, and a git pull should update all of them at once.
+if [[ $REPO == *"/.claude/plugins/"* ]]; then
+  echo "running inside a Claude Code plugin — the skill comes from the plugin"
+else
+  mkdir -p "$SKILL_DIR"
+  ln -sfn "$REPO/skills/nook" "$SKILL_DIR/nook"
+  echo "linked $SKILL_DIR/nook -> $REPO/skills/nook"
+fi
 
-mkdir -p "$UNIT_DIR"
-ln -sf "$REPO/pc/nook-mount.service" "$UNIT_DIR/nook-mount.service"
-systemctl --user daemon-reload
-echo "installed nook-mount.service (enabled by 'nook adopt')"
+if command -v systemctl >/dev/null; then
+  mkdir -p "$UNIT_DIR"
+  cp -f "$REPO/systemd/nook-mount.service" "$UNIT_DIR/"
+  systemctl --user daemon-reload 2>/dev/null || true
+  echo "installed $UNIT_DIR/nook-mount.service"
+else
+  echo "no systemd here — 'nook mount' will call sshfs directly" >&2
+fi
 
-# Symlinked rather than copied, the way omarchy links its own skills, so a
-# git pull updates the guides without a reinstall.
-mkdir -p "$SKILL_DIR"
-ln -sfn "$REPO/agents/skills/nook" "$SKILL_DIR/nook"
-echo "linked $SKILL_DIR/nook -> $REPO/agents/skills/nook"
-
-# Optional and asked for explicitly: the rule only changes how the file manager
+# Optional, and asked for explicitly: the rule only changes how the file manager
 # categorises the drive, so a machine where sudo is inconvenient still works.
 if [[ ${NOOK_SKIP_UDEV:-0} != 1 ]]; then
   if sudo -n true 2>/dev/null || [[ -t 0 ]]; then
-    sudo install -m 644 "$REPO/pc/99-nook.rules" /etc/udev/rules.d/99-nook.rules
+    sudo install -m 644 "$REPO/udev/99-nook.rules" /etc/udev/rules.d/99-nook.rules
     sudo udevadm control --reload
     echo "installed /etc/udev/rules.d/99-nook.rules"
   else
@@ -47,61 +87,16 @@ if [[ ${NOOK_SKIP_UDEV:-0} != 1 ]]; then
   fi
 fi
 
-mkdir -p "$(dirname "$MENU")"
-[[ -s $MENU ]] || printf '{\n}\n' >"$MENU"
-cp "$MENU" "$MENU.bak.$(date +%s)"
+case ":$PATH:" in
+  *":$BIN_DIR:"*) ;;
+  *) echo "note: $BIN_DIR is not on your PATH" >&2 ;;
+esac
 
-python3 - "$REPO/extensions/nook.jsonc" "$MENU" "$NAME" <<'PY'
-import pathlib, re, sys
+cat <<'EOF'
 
-snippet = pathlib.Path(sys.argv[1]).read_text().rstrip()
-target = pathlib.Path(sys.argv[2])
-name = sys.argv[3]
+next:
+  on the Pi:  curl -fsSL https://raw.githubusercontent.com/achevalier-dev/nook/main/pi/boot.sh | bash
+  here:       nook adopt
 
-begin, end = f"  // >>> {name}", f"  // <<< {name}"
-block = f"{begin}\n{snippet}\n{end}\n"
-text = target.read_text()
-
-if begin in text and end in text:
-    text = re.sub(re.escape(begin) + r".*?" + re.escape(end) + r"\n?", lambda m: block, text, flags=re.S)
-else:
-    cut = text.rstrip().rfind("}")
-    if cut < 0:
-        raise SystemExit(f"{target} is not a JSON object; refusing to edit it")
-    # Keep whatever follows the closing brace — a trailing comment there is the
-    # user's, and dropping it would be editing config we were not asked to.
-    tail = text[cut:]
-    head = text.rstrip()[:cut].rstrip()
-    # JSONC tolerates a trailing comma but not a missing one. The comma belongs
-    # on the last entry, which is not the last line when a block ends in a
-    # comment — putting it there would comment the comma out.
-    lines = head.splitlines()
-    for i in range(len(lines) - 1, -1, -1):
-        stripped = lines[i].strip()
-        if not stripped or stripped.startswith("//"):
-            continue
-        if not stripped.endswith(",") and not stripped.endswith("{"):
-            lines[i] = lines[i].rstrip() + ","
-        break
-    head = "\n".join(lines)
-    text = head + "\n" + block + tail
-    if not text.endswith("\n"):
-        text += "\n"
-
-target.write_text(text)
-PY
-
-echo "menu rows installed in $MENU (previous version backed up alongside it)"
-omarchy menu refresh >/dev/null 2>&1 || true
-
-cat <<'NOTE'
-
-Next, on the Pi:
-
-    curl -fsSL https://raw.githubusercontent.com/achevalier-dev/nook/main/pi/boot.sh | bash
-
-then back here:
-
-    nook adopt
-
-NOTE
+  or do both from here:  nook boot <hostname-or-ip>
+EOF

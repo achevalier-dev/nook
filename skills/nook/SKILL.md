@@ -86,6 +86,14 @@ nook status --json   # the same, machine-readable — this is what the widget po
 nook doctor          # check every moving part and name the broken one
 nook disk            # the drive: transport, size, who is attached
 nook disk --local    # the same without the SSH round trip
+nook help --all      # every command, including the rare ones
+```
+
+`NOOK_HOME` moves the config directory, which is how the tests and any
+throwaway experiment stay out of the real one:
+
+```bash
+NOOK_HOME=/tmp/nook-test nook status
 ```
 
 `nook status --json` shape:
@@ -105,7 +113,7 @@ On the machine you use:
 
 | Path | What |
 |---|---|
-| `~/.config/nook/config` | written by `nook adopt`; host, transport, target IQN, paths |
+| `~/.nook/config` | written by `nook adopt`; host, transport, target IQN, paths |
 | `~/.config/systemd/user/nook-mount.service` | the sshfs unit behind `nook mount` |
 | `~/.ssh/config` | a marked `# >>> nook` block with the control socket |
 | `/etc/udev/rules.d/99-nook.rules` | makes the drive show as removable, not a system disk |
@@ -137,8 +145,16 @@ lsblk -f $(nook disk --local | awk '/^disk / && $2 != "not" {print $2}')
 nook ssh systemctl status nbd-server      # or rtslib-fb-targetctl for iSCSI
 ```
 
+## The Omarchy Front End
+
+The bar widget and the menu rows live in a separate repository,
+[omarchy-nook](https://github.com/achevalier-dev/omarchy-nook). They are a thin
+layer over this CLI: the widget polls `nook status --json` and `nook disk
+--local`, and every menu row runs a `nook` command. A problem with what they
+*show* is almost always a problem with what the CLI *says* — check the CLI
+first.
+
 ## Out of Scope
 
 Developing Omarchy itself, or a Raspberry Pi that has never run the nook boot
-script. For the bar widget and menu rows, this skill covers *using* them; for
-editing Hyprland or `shell.json`, use the `omarchy` skill.
+script. For editing Hyprland or `shell.json`, use the `omarchy` skill.

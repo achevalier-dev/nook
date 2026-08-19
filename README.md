@@ -1,11 +1,15 @@
 # nook
 
-Your Raspberry Pi, reachable from anywhere, with its disk offered to your
-machines two ways: as a folder many of them can share, and as a drive that
-mounts like a USB stick — over the network, with no cable.
+A Raspberry Pi you reach from anywhere, offering its disk to your machines two
+ways: as a folder many of them can share, and as a drive that mounts like a USB
+stick — over the network, with no cable.
 
-Built for [Omarchy](https://omarchy.org): a bar widget, menu rows, and a `nook`
-command. The Pi half is plain Debian and needs nothing from Omarchy.
+Bash, `ssh`, `rsync` and the kernel's own block-device client. No daemon, no
+database, no agent running on your laptop.
+
+The bar widget and menu rows for [Omarchy](https://omarchy.org) are a separate
+repository, [omarchy-nook](https://github.com/achevalier-dev/omarchy-nook). This
+one is the CLI and the Pi.
 
 ## Getting there
 
@@ -17,14 +21,20 @@ curl -fsSL https://raw.githubusercontent.com/achevalier-dev/nook/main/pi/boot.sh
 
 It prints a link and a QR code. Open it on a device already signed in to
 Tailscale and the pairing is done — there is no key to generate, copy, or paste
-back. `--ssh` goes up with it, so SSH is authenticated by tailnet identity and
-no keys are created or authorised anywhere either.
+back. `--ssh` goes up with it, so SSH authenticates by tailnet identity and no
+keys are created or authorised anywhere either.
 
 Then on your machine:
 
 ```bash
-./install.sh    # links the CLI, the mount unit, the menu rows
+./install.sh
 nook adopt
+```
+
+Or do both from your machine, if the Pi already has SSH:
+
+```bash
+nook boot raspberrypi.local -- --format
 ```
 
 `adopt` reads the Pi's `/etc/nook.conf`, writes an SSH block with a persistent
@@ -57,7 +67,7 @@ nook eject
 > **One machine at a time.** A filesystem on a block device assumes it is the
 > only thing writing to it. Two machines attaching the same drive read-write
 > will corrupt it — both cache metadata and neither knows about the other.
-> `nook attach` refuses when someone else holds it, and `nook eject` flushes
+> `nook attach` asks the Pi who holds it and refuses; `nook eject` flushes
 > before it disconnects. If you want simultaneous access, that is what the
 > shared folder is for.
 
@@ -69,8 +79,7 @@ back to NBD, which is entirely userspace on the Pi and works everywhere.
 
 > **Neither transport authenticates.** iSCSI ships with no CHAP and NBD has no
 > auth at all, so nook binds both to the Tailscale address only. That is the
-> security boundary, and it is why the portal is never on `0.0.0.0`. Do not
-> move it onto a LAN interface.
+> security boundary, and it is why the portal is never on `0.0.0.0`.
 
 ## Obsidian
 
@@ -85,10 +94,6 @@ minutes and pull-on-startup. The vault gets history, conflicts are git conflicts
 you can actually resolve, and it works offline by construction. Mobile Obsidian
 speaks the same remote.
 
-Opening a vault straight off `~/nook` also works, and on a LAN it is fine —
-but Obsidian writes its workspace file constantly, so over a slow link the
-latency shows.
-
 ## Containers
 
 Compose files stay on your machine; the containers run on the Pi. No editing
@@ -100,7 +105,7 @@ nook logs
 nook ps
 ```
 
-Build for the Pi from your laptop's much faster CPU:
+Build for the Pi on your laptop's much faster CPU:
 
 ```bash
 docker buildx build --platform linux/arm64 --push -t ghcr.io/you/thing .
@@ -110,19 +115,34 @@ docker buildx build --platform linux/arm64 --push -t ghcr.io/you/thing .
 ports go to loopback and `tailscale serve` publishes them on the tailnet with a
 real certificate.
 
-## In the bar
+## Commands
 
-The drive glyph is bright when the nook answers and dimmed when it does not,
-and turns amber when the CPU goes over the temperature you set. The panel
-carries disk use, load, container count, and who is holding the drive, then the
-actions that make sense right now — it will not offer **Eject** with nothing
-attached.
+```
+nook adopt [host]      pair with a nook that has run the boot script
+nook boot <host>       run the boot script on a Pi over SSH, then adopt it
+nook status [--json]   temperature, disk, containers, who holds the drive
+nook doctor            check every moving part and name the broken one
 
-- **Left click** opens the panel
-- **Right click** attaches the drive, or ejects it if it is already here
-- **Middle click** mounts the shared folder, or opens it if it is already mounted
+nook mount / umount    the shared folder at ~/nook
+nook push / pull       rsync in and out of it
+nook code [path]       open the nook in VS Code over SSH
 
-The menu behaves the same way: `Super+Space`, then `nook`.
+nook attach / eject    the drive
+nook format            erase the drive and make a filesystem — asks first
+nook grow              after a resize, fill the new space
+nook disk [--local]    what the drive is doing
+
+nook up / down / ps / logs
+nook vault init [name] a bare git repo for an Obsidian vault
+nook ssh
+nook help --all        every command
+```
+
+`NOOK_HOME` moves the config directory, which is how a throwaway experiment
+stays out of the real one.
+
+On the Pi, `nook-target` manages the export and `nook-info` prints the JSON
+`nook status` reads.
 
 ## The boot script
 
@@ -147,17 +167,17 @@ for.
 `--usb-gadget` offers the same image over the USB-C port for when there is no
 network at all. It exports **read-only** on purpose: the host caches the
 filesystem and assumes exclusive ownership, so the image can only ever be live
-on one side. The network path stays the one you write through.
+on one side.
 
 ## Claude Code
 
-`install.sh` links `agents/skills/nook` into `~/.claude/skills/`, the same way
-Omarchy links its own. Claude then knows the two lanes, the single-writer rule,
-which transport your Pi ended up with, and what `nook doctor` is telling you —
-and reaches for the CLI rather than raw `iscsiadm` and `nbd-client`.
+`install.sh` links `skills/nook` into `~/.claude/skills/`. Claude then knows the
+two lanes, the single-writer rule, which transport your Pi ended up with, and
+what `nook doctor` is telling you — and reaches for the CLI rather than raw
+`iscsiadm` and `nbd-client`.
 
 ```
-agents/skills/nook/
+skills/nook/
 ├── SKILL.md            the model, the safety rules, where everything lives
 ├── setup.md            boot script, modules, adopting
 ├── drive.md            transports, attach/eject/format, resizing, recovery
@@ -166,39 +186,34 @@ agents/skills/nook/
 └── troubleshooting.md  symptom to cause
 ```
 
-## Commands
+`/nook` is a slash command that runs `status` and `doctor` and reads the result.
+
+## Structure
 
 ```
-nook adopt [HOST]      pair with a nook that has run the boot script
-nook status [--json]   temperature, disk, containers, who holds the drive
-nook doctor            check every moving part and say which one is broken
-
-nook mount / umount    the shared folder at ~/nook
-nook attach / eject    the drive
-nook format            erase the drive and make a filesystem — asks first
-nook grow              after a resize, fill the new space
-nook disk              what the drive is doing
-
-nook up [DIR]          compose up -d, running on the nook
-nook down / ps / logs
-nook push SRC [DEST]   rsync into the shared folder
-nook pull SRC [DEST]
-nook code [PATH]       open the nook in VS Code over SSH
-nook ssh
-nook vault init [NAME] a bare git repo for an Obsidian vault
+bin/nook           dispatcher
+lib/<topic>.sh     one file per area, exporting cmd_<name> functions
+pi/boot.sh         the one-liner, and pi/modules/ the steps it sources
+pi/bin/            helpers installed onto the Pi
+skills/nook/       the Claude Code skill
+systemd/ udev/     the mount unit and the rule that makes the drive removable
 ```
 
-On the Pi, `nook-target` manages the export and `nook-info` prints the JSON the
-widget reads.
+```bash
+./script/check     # syntax, shellcheck, json, four behaviour tests — no Pi needed
+```
+
+See [AGENTS.md](AGENTS.md) for the shell rules, and
+[CONTRIBUTING.md](CONTRIBUTING.md) before a pull request.
 
 ## Requirements
 
 **Pi** — Raspberry Pi OS Lite or any Debian, an external USB disk, and a
 Tailscale account.
 
-**Your machine** — `sshfs`, `jq`, `rsync`, and `udisks2`; plus `open-iscsi` or
-`nbd` depending on which transport the Pi ended up with. `nook doctor` names the
-missing one.
+**Your machine** — Linux with `ssh`, `sshfs`, `jq`, `rsync` and `udisks2`, plus
+`open-iscsi` or `nbd` depending on which transport the Pi ended up with.
+`nook doctor` names the missing one.
 
 ## License
 

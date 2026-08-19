@@ -1,0 +1,50 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  shell:
+    name: shellcheck and syntax
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: bash -n every script
+        run: ./script/check --syntax-only
+
+      - name: shellcheck
+        run: shellcheck --version && ./script/check --lint-only
+
+  behaviour:
+    name: manifests and invariants
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: every manifest is valid json
+        run: ./script/check --json
+
+      - name: the plugin version matches the manifest
+        run: |
+          a=$(jq -r .version manifest.json)
+          b=$(jq -r .version .claude-plugin/plugin.json)
+          [[ $a == "$b" ]] || { echo "manifest.json $a != plugin.json $b"; exit 1; }
+        shell: bash
+
+      - name: every command reaches a defined function
+        run: ./script/check --dispatch
+
+      - name: marked blocks insert once and replace in place
+        run: ./script/check --blocks
+
+      - name: attach refuses a drive another machine holds
+        run: ./script/check --drive
+
+      - name: every boot module is listed and sourced-safe
+        run: ./script/check --boot

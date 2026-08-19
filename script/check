@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+# Everything CI runs, runnable before you push. No arguments: every pass.
+set -euo pipefail
+
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+
+SCRIPTS=(bin/nook install.sh script/check pi/boot.sh pi/bin/nook-target pi/bin/nook-info)
+while IFS= read -r f; do SCRIPTS+=("$f"); done < <(
+  find lib pi/modules test -name '*.sh' -type f | sort
+)
+
+syntax() {
+  local f bad=0
+  for f in "${SCRIPTS[@]}"; do
+    bash -n "$f" || { echo "syntax error: $f" >&2; bad=1; }
+  done
+  [[ $bad == 0 ]] && echo "bash -n: ${#SCRIPTS[@]} scripts ok"
+  return $bad
+}
+
+# One file at a time, and without --external-sources: every lib carries a
+# `shellcheck shell=bash` directive, and following sources from the dispatcher
+# makes shellcheck walk the same libraries once per case arm.
+lint() {
+  command -v shellcheck >/dev/null || {
+    echo "shellcheck not installed — skipping (CI will run it)" >&2
+    return 0
+  }
+  local f bad=0
+  for f in "${SCRIPTS[@]}"; do
+    shellcheck --severity=warning "$f" || bad=1
+  done
+  [[ $bad == 0 ]] && echo "shellcheck: ${#SCRIPTS[@]} scripts clean at warning severity"
+  return $bad
+}
+
+# The JSON files are read by the CLI and by the Omarchy plugin loader, so a
+# trailing comma is a runtime failure somewhere far from the edit.
+json() {
+  local f bad=0
+  for f in manifest.json .claude-plugin/plugin.json; do
+    python3 -c "import json,sys; json.load(open(sys.argv[1]))" "$f" ||
+      { echo "invalid JSON: $f" >&2; bad=1; }
+  done
+  [[ $bad == 0 ]] && echo "json: manifest and plugin manifest parse"
+  return $bad
+}
+
+dispatch() { ./test/dispatch_test.sh; }
+blocks() { ./test/replace_block_test.sh; }
+drive() { ./test/drive_guard_test.sh; }
+boot() { ./test/boot_modules_test.sh; }
+
+case ${1-} in
+  --syntax-only) syntax ;;
+  --lint-only) lint ;;
+  --json) json ;;
+  --dispatch) dispatch ;;
+  --blocks) blocks ;;
+  --drive) drive ;;
+  --boot) boot ;;
+  "") syntax && lint && json && dispatch && blocks && drive && boot ;;
+  *)
+    echo "usage: script/check [--syntax-only | --lint-only | --json | --dispatch |" >&2
+    echo "                     --blocks | --drive | --boot]" >&2
+    exit 2
+    ;;
+esac

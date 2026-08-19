@@ -42,6 +42,13 @@ turns out false will kill the run; write `if` blocks.
 A checkout on disk wins over the fetched copy, which is what makes
 `git clone && sudo pi/boot.sh` a working development loop.
 
+Or drive the whole thing from your own machine, which runs the same script over
+SSH and then adopts the result:
+
+```bash
+nook boot <hostname-or-ip> -- --format
+```
+
 ## Pairing
 
 No auth key anywhere. `tailscale up` prints a link and a QR code; opening it on
@@ -55,14 +62,14 @@ generates, copies, or authorises an SSH key — if you find yourself running
 ## Adopting from your machine
 
 ```bash
-./install.sh    # links the CLI, mount unit, udev rule, menu rows, this skill
+./install.sh    # links the CLI, the mount unit, the udev rule and this skill
 nook adopt      # or: nook adopt <hostname>
 ```
 
 `adopt` is idempotent and does six things:
 
 1. Proves SSH works, then reads the Pi's `/etc/nook.conf`
-2. Writes `~/.config/nook/config` from it
+2. Writes `~/.nook/config` from it
 3. Replaces the marked `# >>> nook` block in `~/.ssh/config` — on top, because
    Host blocks are first-match-wins and a wildcard further up would swallow it
 4. On iSCSI only: sets this machine's InitiatorName and asks the Pi to allow it
