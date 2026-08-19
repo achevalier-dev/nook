@@ -1,0 +1,11 @@
+services:
+  home:
+    image: nginx:alpine
+    restart: unless-stopped
+    # 8880, not 80: a box that has been used for anything else usually has
+    # something on 80 already, and `nook serve` puts this on 443 anyway.
+    ports: ["${NOOK_TS_IP}:8880:80"]
+    volumes:
+      # Written by `nook install` and `nook uninstall`, so the page is whatever
+      # is actually running rather than whatever was true when it was set up.
+      - ${NOOK_DATA}/www:/usr/share/nginx/html:ro

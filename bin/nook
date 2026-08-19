@@ -35,6 +35,7 @@ nook — your Raspberry Pi, from here
 
   nook services             things worth running, and what is running
   nook install <name>       put one on the box — jellyfin, paperless, …
+  nook serve                give them https names on your tailnet
   nook up [dir]             docker compose up -d, running over there
   nook push <src> [dest]    rsync into the shared folder
   nook vault init [name]    a bare git repo for an Obsidian vault
@@ -79,6 +80,7 @@ Services
   nook services                         the catalogue, and what is running
   nook install <name>…                  deploy one, data under $NOOK_DATA/apps
   nook uninstall <name>                 stop it; its data stays
+  nook serve [--off]                    https://<box>.<tailnet>.ts.net, real cert
 
 Containers
   nook up [dir]                         compose up -d, on the nook
@@ -132,7 +134,7 @@ case $cmd in
     source "$ROOT/lib/containers.sh"
     "cmd_$cmd" "$@"
     ;;
-  services | install | uninstall)
+  services | install | uninstall | serve)
     source "$ROOT/lib/services.sh"
     "cmd_$cmd" "$@"
     ;;

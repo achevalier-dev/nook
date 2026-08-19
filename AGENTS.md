@@ -60,6 +60,11 @@ the Pi. Two consequences that have already caused bugs here:
 - `pi/modules/*.sh` are **sourced**, not executed. A module that gives up early
   uses `return`; an `exit` takes the whole boot run down halfway.
 
+`remote` is ssh, and ssh reads stdin. Calling it inside a `while read … done <
+<(…)` loop eats the rest of the loop's input, and the loop silently stops after
+one pass. Read the list into an array with `mapfile` first. shellcheck catches
+this as SC2095 for a bare `ssh`, but not through a function.
+
 Files nook does not own — `~/.ssh/config`, `smb.conf`, `omarchy-menu.jsonc` —
 are edited through `replace_block`, between markers, never appended to blindly.
 

@@ -272,6 +272,33 @@ exception, and says so: it needs host networking to discover things on your LAN.
 
 Anything not in the list is still just compose — `nook up ~/stacks/whatever`.
 
+### One address, and real certificates
+
+Remembering that Jellyfin is 8096 and Navidrome is 4533 is the part that makes a
+home server annoying. So the first `nook install` also puts up an index page
+listing everything running, and:
+
+```bash
+nook serve
+```
+
+hands the whole lot to `tailscale serve`, which terminates TLS with a
+certificate the tailnet issues for your box:
+
+```
+  https://nook.tailnet.ts.net        →  home
+  https://nook.tailnet.ts.net:8096   →  jellyfin
+  https://nook.tailnet.ts.net:3001   →  uptime-kuma
+```
+
+Nothing bought, nothing renewed, nothing opened on a router, and it works from a
+phone on mobile data. `nook serve --off` puts it back.
+
+It proxies to the ports the services already publish rather than moving them
+behind it, so turning serve off does not take anything down. If the tailnet has
+no HTTPS certificates yet, `nook serve` says exactly where to turn them on
+(admin console → DNS → HTTPS Certificates) rather than half-working.
+
 ## Containers
 
 Compose files stay on your machine; the containers run on the Pi. No editing

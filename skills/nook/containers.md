@@ -17,6 +17,12 @@ service that publishes on every interface, that collides with another's port, or
 that mounts anything outside `$NOOK_DATA`. `home-assistant` is the documented
 exception: host networking, because LAN discovery does not survive a bridge.
 
+`nook serve` puts every running service behind the box's Tailscale name with a
+real certificate — 443 for the index page, each service's own port for itself.
+It proxies to the ports the services already publish rather than moving them to
+loopback, so `nook serve --off` does not take anything down. It needs HTTPS
+certificates enabled tailnet-wide, and says so when they are not.
+
 `nook uninstall` stops the containers and leaves the data — "uninstall" and
 "delete everything I put in it" should not be the same word.
 
