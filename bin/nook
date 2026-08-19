@@ -36,6 +36,7 @@ nook — your Raspberry Pi, from here
 
   nook services             things worth running, and what is running
   nook install <name>       put one on the box — jellyfin, paperless, …
+  nook catalogue            what it could run, and when that list last changed
   nook serve                give them https names on your tailnet
   nook open [service]       open one in a browser, no address to remember
   nook speedtest            measure the box's link, and show it on the page
@@ -90,6 +91,7 @@ Services
   nook services                         the catalogue, and what is running
   nook install <name>…                  deploy one, data under $NOOK_DATA/apps
   nook uninstall <name>                 stop it; its data stays
+  nook catalogue [--refresh]            the list of what could run, refreshed daily
   nook serve [--off]                    https://<box>.<tailnet>.ts.net, real cert
   nook open [service]                   open it in a browser; the index by default
 
@@ -153,7 +155,7 @@ case $cmd in
     source "$ROOT/lib/containers.sh"
     "cmd_$cmd" "$@"
     ;;
-  services | install | uninstall | serve | open)
+  services | install | uninstall | serve | open | catalogue)
     source "$ROOT/lib/services.sh"
     "cmd_$cmd" "$@"
     ;;

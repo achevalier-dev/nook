@@ -38,7 +38,7 @@ NOOK_MANAGE=${NOOK_MANAGE:-1}
 NOOK_API_PORT=${NOOK_API_PORT:-8881}
 SKIP=()
 
-MODULES=(10-base 20-tailscale 30-storage 35-disk 40-docker 45-status 50-shares 55-api 60-usb-gadget 70-upgrade 75-speedtest)
+MODULES=(10-base 20-tailscale 30-storage 35-disk 40-docker 45-status 50-shares 55-api 58-catalogue 60-usb-gadget 70-upgrade 75-speedtest)
 
 # Kept whole, because the loop below consumes $@ and the sudo re-exec further
 # down still has to pass the flags on. Without this, `--format` is parsed here

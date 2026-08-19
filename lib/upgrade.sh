@@ -33,7 +33,13 @@ cmd_upgrade() {
   esac
 
   log "upgrading services on $NOOK"
-  remote nook-upgrade
+  # A non-zero run means something was pulled, failed to come up, and was put
+  # back — the box has already undone it, and this says which one to look at.
+  if ! remote nook-upgrade; then
+    echo
+    echo "  Something did not come up and was rolled back to its previous image."
+    echo "  It is running again on the old one:  nook logs <service>"
+  fi
 
   # Said, not done: pulling the client mid-command would replace the code that
   # is running.

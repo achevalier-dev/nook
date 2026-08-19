@@ -356,6 +356,7 @@ nook disk [--local]    what the drive is doing
 
 nook services          the catalogue, and what is running
 nook install <name>    deploy one; nook uninstall <name> stops it
+nook catalogue         what it could run; --refresh pulls a newer list
 nook serve             https names on your tailnet, with a real certificate
 nook open [service]    open it, so there is no address to remember
 nook upgrade           newer images; --box, --auto, --no-auto
@@ -442,6 +443,27 @@ network at all. It exports **read-only** on purpose: the host caches the
 filesystem and assumes exclusive ownership, so the image can only ever be live
 on one side.
 
+## The catalogue keeps itself current
+
+The list of what a box *could* run refreshes on its own, daily — one small
+tarball, and nothing installed or changed by it. A service added upstream is a
+service the box could be running, and nobody should re-run the boot script to
+hear about it.
+
+```bash
+nook catalogue              # when the list was last pulled, and how big it is
+nook catalogue --refresh    # pull it now
+```
+
+The **refresh** control in the catalogue overlay does the same thing, and
+anything that arrived in the last pull wears a **new** badge — which is the only
+sense of "new" a box can honestly have.
+
+The download replaces the catalogue by swapping the directory, never by writing
+into it, so a service is never half-replaced while the API is reading it; and an
+empty or truncated download is refused rather than allowed to wipe a working
+list.
+
 ## Keeping it current
 
 Three separate things go out of date, and conflating them is how one gets
@@ -476,6 +498,16 @@ copy is never rewritten by a timer.
 `nook upgrade` restarts only what actually changed, because restarting a service
 that did not is downtime for nothing. It also says when the client itself is
 behind, rather than pulling out from under the command you are running.
+
+What the box does unattended, it can also undo. Before pulling it checks there
+is room — a home server that fills its own disk overnight is worse than one
+running last month's images — and after restarting a service it waits for the
+containers to be up, and healthy where they say so. Anything that does not come
+up gets its previous image put back and recreated from it, which is why the
+prune happens last and never after a rollback: the image it would delete is the
+one now running. The last run is recorded in `/var/lib/nook/last-upgrade.json`
+and comes back in `nook status --json`, so a service quietly held at last
+week's version is something you can see rather than something you find.
 
 The box does it on its own once a week — `nook upgrade --auto` / `--no-auto`,
 Sunday at 04:00 with an hour of jitter, and `Persistent=true` so a box that was

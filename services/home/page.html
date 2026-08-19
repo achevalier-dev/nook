@@ -201,6 +201,16 @@
   #market[hidden] { display: none; }
   #market .ttl { margin: 0 0 1.1rem; color: #ffffff8c; font-size: .58rem;
                  letter-spacing: .34em; text-transform: uppercase; text-align: center; }
+  #cwhen { color: #ffffff40; }
+  #market .ttl button.link { color: #ffffff59; border-color: #ffffff26; letter-spacing: .2em; margin-left: .6rem; }
+  #market .ttl button.link:hover { color: var(--amber-lit); border-color: var(--amber-lit); }
+  /* Something that appeared in the last refresh, which is the only sense of
+     "new" a box can honestly have. */
+  .card .fresh {
+    font-size: .52rem; letter-spacing: .18em; text-transform: uppercase;
+    color: var(--amber); border: 1px solid var(--amber); border-radius: .15rem;
+    padding: .08rem .3rem; margin-left: .45rem; vertical-align: .12em;
+  }
   #q {
     font: inherit; font-size: .85rem; color: #fff; background: none;
     border: 0; border-bottom: 1px solid #ffffff26; padding: .5rem .2rem;
@@ -313,7 +323,8 @@
 
 <div id="scrim" hidden>
   <div id="market" hidden>
-    <p class="ttl">catalogue</p>
+    <p class="ttl">catalogue <span id="cwhen"></span>
+      <button id="crefresh" class="link">refresh</button></p>
     <input id="q" type="search" placeholder="search" autocomplete="off" spellcheck="false">
     <div id="cards"></div>
     <p class="hint">esc, or anywhere outside, to close</p>
@@ -702,11 +713,27 @@
   // contents page. Adding something is a thing you go and do, so it gets a
   // screen of its own.
   const cards = $('cards'), market = $('market'), q = $('q');
+  let fresh = new Set();
+
+  // When the box last pulled the list, and what arrived with it.
+  async function readCatalogueState() {
+    try {
+      const c = await (await fetch('catalogue.json?t=' + Date.now(), { cache: 'no-store' })).json();
+      fresh = new Set(c.added || []);
+      const mins = Math.round((Date.now() - new Date(c.at)) / 60000);
+      const ago = mins < 60 ? `${mins}m` : mins < 1440 ? `${Math.round(mins / 60)}h` : `${Math.round(mins / 1440)}d`;
+      $('cwhen').textContent = `· ${c.count} · pulled ${ago} ago`;
+    } catch {
+      $('cwhen').textContent = '';
+    }
+  }
 
   function card(s) {
     const c = el('div', 'card' + (s.installed ? ' on' : ''));
     c.appendChild(el('span', 'mono', s.name[0].toUpperCase()));
-    c.appendChild(el('h3', '', s.name));
+    const h = el('h3', '', s.name);
+    if (fresh.has(s.name)) h.appendChild(el('span', 'fresh', 'new'));
+    c.appendChild(h);
     c.appendChild(el('p', '', s.summary || ''));
 
     const end = el('div', 'end');
@@ -791,7 +818,28 @@
 
   q.addEventListener('input', renderMarket);
 
+  $('crefresh')?.addEventListener('click', async () => {
+    const b = $('crefresh'), was = b.textContent;
+    b.disabled = true;
+    b.textContent = 'pulling…';
+    try {
+      const r = await fetch('api/catalogue/refresh', { method: 'POST' });
+      if (!r.ok) throw new Error(String(r.status));
+      const data = await r.json();
+      catalogue = data.services || catalogue;
+      await readCatalogueState();
+      renderMarket();
+      b.textContent = was;
+    } catch {
+      b.textContent = 'could not';
+      setTimeout(() => (b.textContent = was), 3000);
+    } finally {
+      b.disabled = false;
+    }
+  });
+
   function openMarket() {
+    readCatalogueState().then(renderMarket);
     renderMarket();
     market.hidden = false;
     $('stage').hidden = true;

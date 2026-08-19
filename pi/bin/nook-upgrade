@@ -3,46 +3,188 @@
 # ones that changed. Run by hand, by `nook upgrade` from another machine, or by
 # nook-upgrade.timer.
 #
+# It runs at four in the morning on a box nobody is watching, which decides how
+# it behaves:
+#
+#   - it checks there is room before it pulls, because a home server that fills
+#     its own disk overnight is worse than one running last month's images;
+#   - it waits for what it restarted to come up, and puts the old image back
+#     when it does not. An upgrade nobody watched is only safe if it can undo
+#     itself;
+#   - it prunes last, and never after a rollback, because the image it would
+#     delete is the one that is running.
+#
 # Only services are touched here. The OS has unattended-upgrades for its
 # security updates, and nook itself is re-run by whoever runs the boot script.
 
-set -euo pipefail
+set -uo pipefail
 
-# shellcheck disable=SC1091
-. /etc/nook.conf
+# Overridable so the behaviour tests can run this against a directory in /tmp.
+NOOK_CONF=${NOOK_CONF:-/etc/nook.conf}
+# shellcheck disable=SC1090,SC1091
+. "$NOOK_CONF"
 
 STACKS=$NOOK_DATA/stacks
+STATE=${NOOK_STATE:-/var/lib/nook}
+# How long a service gets to come up before it counts as a failed upgrade. Slow
+# things — Home Assistant, Paperless — take a while on a Pi.
+SETTLE=${NOOK_UPGRADE_SETTLE:-120}
+# Room to leave free, in GiB. A pull writes into docker's storage, and a box
+# that runs out mid-layer leaves a half-extracted image behind.
+MIN_FREE=${NOOK_UPGRADE_MIN_FREE:-2}
+
 QUIET=0
 [[ ${1:-} == --quiet ]] && QUIET=1
 
 say() { ((QUIET)) || printf '%s\n' "$*"; }
+warn() { printf '%s\n' "$*" >&2; }
 
-[[ -d $STACKS ]] || { say "no stacks on this box"; exit 0; }
+# What the last run did, where something else can read it: the index page, a
+# future `nook status`, or a person wondering why a service is a version behind.
+record() { # <json>
+  mkdir -p "$STATE" 2>/dev/null || return 0
+  printf '%s\n' "$1" >"$STATE/last-upgrade.json" 2>/dev/null || true
+}
+
+free_gib() { # <path>
+  local avail
+  avail=$(df -B1 --output=avail "$1" 2>/dev/null | tail -n1 | tr -d ' ')
+  [[ -n $avail ]] || { echo 0; return 0; }
+  echo $((avail / 1073741824))
+}
+
+docker_root() {
+  docker info --format '{{.DockerRootDir}}' 2>/dev/null || echo /var/lib/docker
+}
+
+# repo:tag<TAB>image id, one line per service in the project. The tag is what a
+# compose file names and the id is what it resolves to today, which is exactly
+# the pair a rollback needs.
+stack_images() { # <name>
+  docker compose -p "$1" --project-directory "$STACKS/$1" images --format json 2>/dev/null |
+    jq -r '(if type == "array" then . else [.] end)[]
+           | "\(.Repository):\(.Tag)\t\(.ID)"' 2>/dev/null | sort -u
+}
+
+# Every container of the project is running, and any that declares a health
+# check says healthy. A container that is restarting has not come up — it is
+# crash-looping, which is the failure this whole function exists to catch.
+stack_healthy() { # <name>
+  local ids id state health
+  ids=$(docker compose -p "$1" --project-directory "$STACKS/$1" ps -q 2>/dev/null)
+  [[ -n $ids ]] || return 1
+
+  while read -r id; do
+    [[ -n $id ]] || continue
+    state=$(docker inspect -f '{{.State.Status}}' "$id" 2>/dev/null)
+    [[ $state == running ]] || return 1
+    health=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{end}}' "$id" 2>/dev/null)
+    case $health in
+      "" | healthy) ;;
+      *) return 1 ;;
+    esac
+  done <<<"$ids"
+  return 0
+}
+
+settle() { # <name> — wait for it to come up, or give up
+  local name=$1 waited=0
+  while ((waited < SETTLE)); do
+    stack_healthy "$name" && return 0
+    sleep 3
+    waited=$((waited + 3))
+  done
+  return 1
+}
+
+# Put the tags back where they pointed before the pull and recreate from them.
+# The images are still on disk because nothing is pruned until the end.
+rollback() { # <name> <saved tag/id lines>
+  local name=$1 saved=$2 tag id
+  while IFS=$'\t' read -r tag id; do
+    [[ -n $tag && -n $id ]] || continue
+    docker tag "$id" "$tag" >/dev/null 2>&1 || true
+  done <<<"$saved"
+  docker compose -p "$name" --project-directory "$STACKS/$name" up -d --force-recreate >/dev/null 2>&1
+}
+
+command -v docker >/dev/null || { warn "docker is not installed on this box"; exit 1; }
+command -v jq >/dev/null || { warn "jq is not installed on this box"; exit 1; }
+
+if [[ ! -d $STACKS ]]; then
+  say "no stacks on this box"
+  record '{"result":"nothing to do"}'
+  exit 0
+fi
+
+# Both matter and they are usually different filesystems: images land in
+# docker's storage, service data in $NOOK_DATA.
+data_free=$(free_gib "$NOOK_DATA")
+images_free=$(free_gib "$(docker_root)")
+if ((data_free < MIN_FREE || images_free < MIN_FREE)); then
+  warn "less than ${MIN_FREE}G free (data ${data_free}G, images ${images_free}G) — not pulling anything"
+  record "$(jq -nc --argjson data "$data_free" --argjson images "$images_free" \
+    '{result: "skipped", reason: "low disk", free: {data: $data, images: $images}}')"
+  exit 0
+fi
 
 changed=()
+rolled_back=()
+unreachable=()
+
 for dir in "$STACKS"/*/; do
   [[ -f $dir/compose.yaml ]] || continue
   name=$(basename "$dir")
 
-  before=$(docker compose -p "$name" --project-directory "$dir" images --quiet 2>/dev/null | sort || true)
-  docker compose -p "$name" --project-directory "$dir" pull --quiet 2>/dev/null || {
+  before=$(stack_images "$name")
+  if ! docker compose -p "$name" --project-directory "$dir" pull --quiet 2>/dev/null; then
     say "$name: could not reach the registry, left alone"
+    unreachable+=("$name")
     continue
-  }
-  after=$(docker compose -p "$name" --project-directory "$dir" images --quiet 2>/dev/null | sort || true)
+  fi
+  after=$(stack_images "$name")
 
   # Restarting a service that did not change costs downtime for nothing.
   if [[ $before == "$after" ]]; then
     say "$name: up to date"
     continue
   fi
+
   docker compose -p "$name" --project-directory "$dir" up -d
-  changed+=("$name")
+  if settle "$name"; then
+    say "$name: upgraded"
+    changed+=("$name")
+    continue
+  fi
+
+  warn "$name: did not come up within ${SETTLE}s — putting the old image back"
+  rollback "$name" "$before"
+  if settle "$name"; then
+    warn "$name: rolled back, and running again"
+  else
+    warn "$name: rolled back, and still not healthy — nook logs $name"
+  fi
+  rolled_back+=("$name")
 done
+
+record "$(jq -nc \
+  --arg at "$(date -Is)" \
+  --argjson changed "$(printf '%s\n' ${changed+"${changed[@]}"} | jq -Rsc 'split("\n") - [""]')" \
+  --argjson rolled_back "$(printf '%s\n' ${rolled_back+"${rolled_back[@]}"} | jq -Rsc 'split("\n") - [""]')" \
+  --argjson unreachable "$(printf '%s\n' ${unreachable+"${unreachable[@]}"} | jq -Rsc 'split("\n") - [""]')" \
+  '{at: $at, result: "ran", changed: $changed, rolled_back: $rolled_back, unreachable: $unreachable}')"
+
+if ((${#rolled_back[@]})); then
+  # The image that was pulled is the one a prune would delete, and after a
+  # rollback it is also the only record of what went wrong.
+  warn "rolled back: ${rolled_back[*]}"
+  exit 1
+fi
 
 if ((${#changed[@]})); then
   say "upgraded: ${changed[*]}"
-  # Only after something actually changed, and only images nothing refers to.
+  # Only after something actually changed and came up, and only images nothing
+  # refers to.
   docker image prune -f >/dev/null 2>&1 || true
 else
   say "everything was already current"

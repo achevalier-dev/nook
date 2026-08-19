@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+# nook-catalogue — refresh this box's copy of the catalogue, and record what
+# changed so the page can say what is new.
+#
+# The catalogue is the one part of a nook that is worth updating on its own: a
+# service added upstream is a service this box could run, and nobody should have
+# to re-run the boot script to hear about it.
+
+set -euo pipefail
+
+# shellcheck disable=SC1091
+. /etc/nook.conf
+
+DEST=$NOOK_DATA/catalogue
+STATE=$NOOK_DATA/www/catalogue.json
+TARBALL=${NOOK_REPO_TARBALL:-https://codeload.github.com/achevalier-dev/nook/tar.gz/main}
+
+names() { find "${1:?}" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' 2>/dev/null | sort; }
+
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
+
+if ! curl -fsSL --max-time 90 "$TARBALL" |
+  tar -xz -C "$tmp" --strip-components=2 --wildcards '*/services/*' 2>/dev/null; then
+  echo "could not fetch the catalogue" >&2
+  exit 1
+fi
+
+# An empty or half-extracted download must never replace a working catalogue.
+[[ -n $(find "$tmp" -mindepth 1 -maxdepth 1 -type d -print -quit) ]] || {
+  echo "the download had no services in it — keeping what is here" >&2
+  exit 1
+}
+
+before=$(names "$DEST")
+mkdir -p "$DEST"
+
+# Swap the directory rather than writing into it, so a service is never half
+# replaced while the API is reading it.
+new=$DEST.new
+rm -rf "$new"
+cp -a "$tmp" "$new"
+chown -R "$NOOK_USER:$NOOK_USER" "$new"
+old=$DEST.old
+rm -rf "$old"
+mv "$DEST" "$old" 2>/dev/null || true
+mv "$new" "$DEST"
+rm -rf "$old"
+
+after=$(names "$DEST")
+
+mkdir -p "$(dirname "$STATE")"
+jq -nc \
+  --arg at "$(date -Is)" \
+  --argjson count "$(wc -l <<<"$after")" \
+  --argjson added "$(comm -13 <(echo "$before") <(echo "$after") | jq -Rsc 'split("\n") | map(select(. != ""))')" \
+  --argjson removed "$(comm -23 <(echo "$before") <(echo "$after") | jq -Rsc 'split("\n") | map(select(. != ""))')" \
+  '{at: $at, count: $count, added: $added, removed: $removed}' >"$STATE.tmp"
+mv "$STATE.tmp" "$STATE"
+chown "$NOOK_USER:$NOOK_USER" "$STATE" 2>/dev/null || true
+
+[[ ${1:-} == --quiet ]] || cat "$STATE"

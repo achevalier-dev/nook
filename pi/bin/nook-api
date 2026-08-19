@@ -214,6 +214,19 @@ measure() {
   fi
 }
 
+# Refreshing changes nothing that is running — it only replaces the list of
+# what could be — so it needs no catalogue check of its own.
+refresh() {
+  command -v nook-catalogue >/dev/null ||
+    fail "503 Service Unavailable" "this box cannot refresh its catalogue — re-run the boot script"
+  serialize
+  if nook-catalogue --quiet >/dev/null 2>&1; then
+    respond "200 OK" "$(catalogue_json)"
+  else
+    fail "502 Bad Gateway" "could not reach the catalogue"
+  fi
+}
+
 # jq builds every answer here, so without it there is nothing to say but this.
 if ! command -v jq >/dev/null; then
   printf 'HTTP/1.1 503 Service Unavailable\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n'
@@ -235,6 +248,7 @@ target=${target%%\?*}
 case "$method $target" in
   "GET /health") respond "200 OK" '{"ok":true}' ;;
   "POST /speedtest") measure ;;
+  "POST /catalogue/refresh") refresh ;;
   "GET /services" | "GET /services/") respond "200 OK" "$(catalogue_json)" ;;
   "POST /services/"*/install) act "$(basename "$(dirname "${target#/services/}")")" install ;;
   "POST /services/"*/update) act "$(basename "$(dirname "${target#/services/}")")" update ;;

@@ -27,10 +27,17 @@ model=$(tr -d '\0' </proc/device-tree/model 2>/dev/null ||
 # than link to something that will not answer.
 services=$(docker compose ls --format json 2>/dev/null | jq -c '[.[].Name]' 2>/dev/null || echo '[]')
 
+# What the weekly upgrade did last time it ran. A service that was rolled back
+# is running last week's image on purpose, and that is worth saying out loud
+# rather than leaving in a journal nobody opens.
+upgrade=$(jq -c '{at: .at, changed: (.changed // []), rolled_back: (.rolled_back // [])}' \
+  /var/lib/nook/last-upgrade.json 2>/dev/null || echo 'null')
+
 jq -nc \
   --arg name "${NOOK_NAME:-nook}" \
   --arg model "$model" \
   --argjson services "$services" \
+  --argjson upgrade "${upgrade:-null}" \
   --arg transport "$transport" \
   --arg uptime "$(uptime -p 2>/dev/null | sed 's/^up //')" \
   --argjson temp "${temp:-null}" \
@@ -43,4 +50,4 @@ jq -nc \
   '{name: $name, model: $model, uptime: $uptime, temp: $temp, load: $load,
     disk: {size: $size, used: $used, avail: $avail},
     containers: $containers, transport: $transport, attached: $attached,
-    services: $services}'
+    services: $services, upgrade: $upgrade}'

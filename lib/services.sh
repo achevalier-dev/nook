@@ -375,3 +375,24 @@ cmd_open() {
   command -v xdg-open >/dev/null && xdg-open "$url" >/dev/null 2>&1 &
   return 0
 }
+
+# nook catalogue — what the box could run, and where that list came from.
+cmd_catalogue() {
+  load_config
+  need jq
+
+  if [[ ${1:-} == --refresh ]]; then
+    log "refreshing the catalogue on $NOOK"
+    remote nook-catalogue | jq -r '
+      "refreshed   \(.at)",
+      "services    \(.count)",
+      (if (.added | length) > 0 then "new         \(.added | join(", "))" else empty end),
+      (if (.removed | length) > 0 then "gone        \(.removed | join(", "))" else empty end)'
+    return 0
+  fi
+
+  remote "cat $NOOK_DATA/www/catalogue.json 2>/dev/null" | jq -r '
+    "refreshed   \(.at)",
+    "services    \(.count)"' 2>/dev/null ||
+    echo "this box has not refreshed its catalogue yet — nook catalogue --refresh"
+}
