@@ -74,6 +74,28 @@ entry is by UUID with `nofail`, so the Pi boots anyway and everything that
 depends on the disk quietly has nowhere to live — which looks like several
 unrelated failures at once. Check this before chasing them.
 
+## The connection drops mid-run
+
+Installing packages and bringing Tailscale up restart services. On a box driven
+through **Raspberry Pi Connect**, one of those services is the session you are
+typing in, so the run dies halfway and leaves apt half-finished.
+
+boot.sh detects that session and moves itself into a transient systemd unit
+automatically. Force it either way with `--detach` / `--no-detach`, and watch it
+with:
+
+```bash
+journalctl -fu nook-boot
+```
+
+Tailscale's login link appears in that log. The same applies to anything else
+long-running on such a box:
+
+```bash
+sudo systemd-run --unit=dpkg-fix bash -c 'DEBIAN_FRONTEND=noninteractive dpkg --configure -a'
+journalctl -u dpkg-fix
+```
+
 ## The boot script stopped in 10-base
 
 **`dpkg was interrupted`** — a package install on that box was cut short before

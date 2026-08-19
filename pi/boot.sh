@@ -26,6 +26,7 @@ NOOK_DISK_SIZE=${NOOK_DISK_SIZE:-256G}
 NOOK_FORMAT=${NOOK_FORMAT:-0}
 NOOK_SHARES=${NOOK_SHARES:-0}
 NOOK_USB_GADGET=${NOOK_USB_GADGET:-0}
+NOOK_DETACH=${NOOK_DETACH:-0}
 SKIP=()
 
 MODULES=(10-base 20-tailscale 30-storage 35-disk 40-docker 50-shares 60-usb-gadget)
@@ -45,6 +46,8 @@ nook boot
   --format          let nook create a filesystem on a blank external disk
   --shares          also run Samba, for phones and non-Linux machines
   --usb-gadget      also offer the disk over a USB-C cable (read the warning)
+  --detach          run in the background, surviving a dropped connection
+  --no-detach       stay in the foreground even on a fragile session
   --skip MODULE     skip a module by name, repeatable
   --help
 USAGE
@@ -58,6 +61,8 @@ while [[ $# -gt 0 ]]; do
   --format) NOOK_FORMAT=1; shift ;;
   --shares) NOOK_SHARES=1; shift ;;
   --usb-gadget) NOOK_USB_GADGET=1; shift ;;
+  --detach) NOOK_DETACH=1; shift ;;
+  --no-detach) NOOK_DETACH=0; NOOK_DETACHED=1; shift ;;
   --skip) SKIP+=("$2"); shift 2 ;;
   --help | -h) usage; exit 0 ;;
   *) echo "unknown option: $1" >&2; usage >&2; exit 2 ;;
@@ -79,17 +84,62 @@ self_path() {
   printf '%s\n' "$src"
 }
 
-if [[ $EUID -ne 0 ]]; then
-  command -v sudo >/dev/null || { echo "run this as root, or install sudo" >&2; exit 1; }
-  if self=$(self_path); then
-    exec sudo -E bash "$self" ${ORIGINAL_ARGS[@]+"${ORIGINAL_ARGS[@]}"}
-  fi
-  command -v curl >/dev/null || { echo "curl is needed to re-run this under sudo" >&2; exit 1; }
+# How to run this script again, as one shell command. Both the privilege
+# re-exec and the detach below need it.
+rerun_command() {
+  local self forwarded=""
   # printf %q with no arguments still emits one empty word, which would reach
   # the flag parser as an unknown option.
-  forwarded=""
-  ((${#ORIGINAL_ARGS[@]})) && forwarded=$(printf '%q ' "${ORIGINAL_ARGS[@]}")
-  exec sudo -E bash -c "curl -fsSL $(printf '%q' "$NOOK_BOOT_URL") | bash -s -- $forwarded"
+  ((${#ORIGINAL_ARGS[@]})) && forwarded=" $(printf '%q ' "${ORIGINAL_ARGS[@]}")"
+  if self=$(self_path); then
+    printf 'bash %q%s' "$self" "$forwarded"
+  else
+    printf 'curl -fsSL %q | bash -s --%s' "$NOOK_BOOT_URL" "$forwarded"
+  fi
+}
+
+if [[ $EUID -ne 0 ]]; then
+  command -v sudo >/dev/null || { echo "run this as root, or install sudo" >&2; exit 1; }
+  self_path >/dev/null || command -v curl >/dev/null ||
+    { echo "curl is needed to re-run this under sudo" >&2; exit 1; }
+  exec sudo -E bash -c "$(rerun_command)"
+fi
+
+# Installing packages and bringing Tailscale up restarts services. On a box you
+# are driving through Raspberry Pi Connect, one of those services is the session
+# you are typing in: the run dies halfway and leaves apt half-finished, which is
+# worse than never starting. So on such a session the work moves into a
+# transient systemd unit that outlives the connection.
+session_is_fragile() {
+  local pid=$PPID comm
+  while [[ ${pid:-0} -gt 1 ]]; do
+    comm=$(cat "/proc/$pid/comm" 2>/dev/null) || return 1
+    case $comm in
+      rpi-connect* | *connect-agent* | *connect-shell*) return 0 ;;
+    esac
+    # Field 4 of /proc/PID/stat is the parent pid.
+    pid=$(awk '{print $4}' "/proc/$pid/stat" 2>/dev/null) || return 1
+  done
+  return 1
+}
+
+if [[ -z ${NOOK_DETACHED:-} ]] && { [[ $NOOK_DETACH == 1 ]] || session_is_fragile; }; then
+  if command -v systemd-run >/dev/null; then
+    cat <<'DETACH'
+
+  This session can be cut off by the services this script restarts, so the work
+  runs in the background instead. Nothing is lost if you get disconnected.
+
+      journalctl -fu nook-boot
+
+  Tailscale's login link appears in that log.
+
+DETACH
+    systemctl reset-failed nook-boot 2>/dev/null || true
+    exec systemd-run --unit=nook-boot --description="nook boot script" \
+      --setenv=NOOK_DETACHED=1 --quiet -- bash -c "$(rerun_command)"
+  fi
+  echo "    warning: no systemd-run here — staying in the foreground" >&2
 fi
 
 . /etc/os-release

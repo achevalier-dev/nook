@@ -194,7 +194,14 @@ Re-running it is the upgrade path — every module checks its own work first.
 --shares          also run Samba, for phones and non-Linux machines
 --usb-gadget      also offer the drive over a USB-C cable
 --skip MODULE     skip a module by name, repeatable
+--detach          run in the background, surviving a dropped connection
+--no-detach       stay in the foreground even on a fragile session
 ```
+
+On a box reached through Raspberry Pi Connect, boot.sh detaches itself: the
+services it restarts include the one carrying your session, and a run that dies
+halfway leaves apt half-finished. Follow it with `journalctl -fu nook-boot` —
+Tailscale's login link appears there.
 
 Give each box its own `--name`: it becomes the hostname, the Tailscale name and
 the name every `nook` command refers to it by.

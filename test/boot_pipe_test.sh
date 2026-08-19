@@ -47,4 +47,41 @@ grep -q 'curl ' <<<"$out" && {
   exit 1
 }
 
-echo "boot: survives curl|bash, keeps its flags, and prefers a checkout"
+# A session that its own package installs can kill must not be the thing the
+# run depends on staying alive.
+cat >"$stub/systemd-run" <<'STUB'
+#!/usr/bin/env bash
+printf 'systemd-run %s
+' "$*"
+STUB
+chmod +x "$stub/systemd-run"
+
+# The detach only happens once the script is root, so the check has to be root
+# too. A user namespace gives EUID 0 without any privilege at all.
+if ! unshare -r true 2>/dev/null; then
+  echo "boot: survives curl|bash, keeps its flags, prefers a checkout (detach: skipped, no user namespaces)"
+  exit 0
+fi
+
+out=$(PATH="$stub:$PATH" unshare -r bash pi/boot.sh --detach --name testbox 2>&1)
+grep -q 'systemd-run .*--unit=nook-boot' <<<"$out" || {
+  echo "--detach did not move the run into a transient unit: $out" >&2
+  exit 1
+}
+grep -q 'NOOK_DETACHED=1' <<<"$out" || {
+  echo "the detached run was not marked, so it would detach again forever: $out" >&2
+  exit 1
+}
+grep -q -- '--name testbox' <<<"$out" || {
+  echo "--detach lost the other flags: $out" >&2
+  exit 1
+}
+
+# And the escape hatch has to actually stay put.
+out=$(PATH="$stub:$PATH" unshare -r bash pi/boot.sh --no-detach --name testbox 2>&1 || true)
+grep -q 'systemd-run' <<<"$out" && {
+  echo "--no-detach detached anyway: $out" >&2
+  exit 1
+}
+
+echo "boot: survives curl|bash, keeps its flags, prefers a checkout, detaches on request"
