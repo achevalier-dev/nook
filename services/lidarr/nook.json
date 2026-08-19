@@ -1,1 +1,9 @@
-{"name":"lidarr","summary":"The same, for music","port":8686,"category":"downloads","library":"files/music"}
+{
+  "name": "lidarr",
+  "summary": "The same, for music",
+  "port": 8686,
+  "category": "downloads",
+  "library": "files/music",
+  "repo": "https://github.com/Lidarr/Lidarr",
+  "stars": 5570
+}

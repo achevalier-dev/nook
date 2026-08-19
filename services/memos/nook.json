@@ -1,1 +1,8 @@
-{"name":"memos","summary":"A place for the notes too small for a document","port":5230,"category":"documents"}
+{
+  "name": "memos",
+  "summary": "A place for the notes too small for a document",
+  "port": 5230,
+  "category": "documents",
+  "repo": "https://github.com/usememos/memos",
+  "stars": 62359
+}

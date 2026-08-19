@@ -1,1 +1,9 @@
-{"name": "actual", "summary": "Envelope budgeting, entirely yours", "port": 5006, "docs": "https://actualbudget.org", "category": "documents"}
+{
+  "name": "actual",
+  "summary": "Envelope budgeting, entirely yours",
+  "port": 5006,
+  "docs": "https://actualbudget.org",
+  "category": "documents",
+  "repo": "https://github.com/actualbudget/actual",
+  "stars": 28234
+}

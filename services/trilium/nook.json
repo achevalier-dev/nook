@@ -1,1 +1,8 @@
-{"name":"trilium","summary":"A notebook that is a tree, for people who think in trees","port":8087,"category":"documents"}
+{
+  "name": "trilium",
+  "summary": "A notebook that is a tree, for people who think in trees",
+  "port": 8087,
+  "category": "documents",
+  "repo": "https://github.com/zadam/trilium",
+  "stars": 37504
+}

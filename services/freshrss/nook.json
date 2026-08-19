@@ -1,1 +1,8 @@
-{"name":"freshrss","summary":"Your feeds, read anywhere, without an account anywhere","port":8088,"category":"media"}
+{
+  "name": "freshrss",
+  "summary": "Your feeds, read anywhere, without an account anywhere",
+  "port": 8088,
+  "category": "media",
+  "repo": "https://github.com/FreshRSS/FreshRSS",
+  "stars": 15803
+}

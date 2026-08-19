@@ -1,1 +1,9 @@
-{"name":"sonarr","summary":"The same, for series","port":8989,"category":"downloads","library":"files/media"}
+{
+  "name": "sonarr",
+  "summary": "The same, for series",
+  "port": 8989,
+  "category": "downloads",
+  "library": "files/media",
+  "repo": "https://github.com/Sonarr/Sonarr",
+  "stars": 15167
+}

@@ -1,1 +1,9 @@
-{"name":"transmission","summary":"A lighter torrent client, if you want fewer knobs","port":9091,"category":"downloads","library":"files/downloads"}
+{
+  "name": "transmission",
+  "summary": "A lighter torrent client, if you want fewer knobs",
+  "port": 9091,
+  "category": "downloads",
+  "library": "files/downloads",
+  "repo": "https://github.com/transmission/transmission",
+  "stars": 15115
+}

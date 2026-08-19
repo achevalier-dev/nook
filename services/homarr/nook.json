@@ -1,1 +1,8 @@
-{"name":"homarr","summary":"A start page you configure by dragging","port":7575,"category":"tools"}
+{
+  "name": "homarr",
+  "summary": "A start page you configure by dragging",
+  "port": 7575,
+  "category": "tools",
+  "repo": "https://github.com/ajnart/homarr",
+  "stars": 7209
+}

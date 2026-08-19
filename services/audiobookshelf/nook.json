@@ -1,1 +1,10 @@
-{"name": "audiobookshelf", "summary": "Audiobooks and podcasts, from the shared folder", "port": 13378, "docs": "https://www.audiobookshelf.org", "library": "files/audiobooks", "category": "media"}
+{
+  "name": "audiobookshelf",
+  "summary": "Audiobooks and podcasts, from the shared folder",
+  "port": 13378,
+  "docs": "https://www.audiobookshelf.org",
+  "library": "files/audiobooks",
+  "category": "media",
+  "repo": "https://github.com/advplyr/audiobookshelf",
+  "stars": 14030
+}

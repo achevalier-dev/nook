@@ -1,1 +1,9 @@
-{"name":"calibre-web","summary":"Browse and send your Calibre library to a reader","port":8083,"category":"media","library":"files/books"}
+{
+  "name": "calibre-web",
+  "summary": "Browse and send your Calibre library to a reader",
+  "port": 8083,
+  "category": "media",
+  "library": "files/books",
+  "repo": "https://github.com/janeczku/calibre-web",
+  "stars": 17994
+}

@@ -1,1 +1,8 @@
-{"name":"metube","summary":"Paste a video link and keep the file","port":8081,"category":"media"}
+{
+  "name": "metube",
+  "summary": "Paste a video link and keep the file",
+  "port": 8081,
+  "category": "media",
+  "repo": "https://github.com/alexta69/metube",
+  "stars": 14449
+}

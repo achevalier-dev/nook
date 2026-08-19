@@ -1,1 +1,8 @@
-{"name":"portainer","summary":"Every container on the box, with buttons","port":9443,"category":"tools"}
+{
+  "name": "portainer",
+  "summary": "Every container on the box, with buttons",
+  "port": 9443,
+  "category": "tools",
+  "repo": "https://github.com/portainer/portainer",
+  "stars": 38272
+}

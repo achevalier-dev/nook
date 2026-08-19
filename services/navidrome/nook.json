@@ -1,1 +1,10 @@
-{"name": "navidrome", "summary": "Your music, streamable to anything that speaks Subsonic", "port": 4533, "docs": "https://www.navidrome.org", "library": "files/music", "category": "media"}
+{
+  "name": "navidrome",
+  "summary": "Your music, streamable to anything that speaks Subsonic",
+  "port": 4533,
+  "docs": "https://www.navidrome.org",
+  "library": "files/music",
+  "category": "media",
+  "repo": "https://github.com/navidrome/navidrome",
+  "stars": 22968
+}

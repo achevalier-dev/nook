@@ -1,1 +1,8 @@
-{"name":"node-red","summary":"Wire devices and services together by drawing it","port":1880,"category":"home"}
+{
+  "name": "node-red",
+  "summary": "Wire devices and services together by drawing it",
+  "port": 1880,
+  "category": "home",
+  "repo": "https://github.com/node-red/node-red",
+  "stars": 23549
+}

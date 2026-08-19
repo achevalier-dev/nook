@@ -1,1 +1,9 @@
-{"name":"duplicati","summary":"Encrypted backups of this box to anywhere else","port":8200,"category":"files","library":"files"}
+{
+  "name": "duplicati",
+  "summary": "Encrypted backups of this box to anywhere else",
+  "port": 8200,
+  "category": "files",
+  "library": "files",
+  "repo": "https://github.com/duplicati/duplicati",
+  "stars": 14907
+}

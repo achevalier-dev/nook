@@ -1,1 +1,8 @@
-{"name":"prowlarr","summary":"One place to keep the indexers the others use","port":9696,"category":"downloads"}
+{
+  "name": "prowlarr",
+  "summary": "One place to keep the indexers the others use",
+  "port": 9696,
+  "category": "downloads",
+  "repo": "https://github.com/Prowlarr/Prowlarr",
+  "stars": 7052
+}

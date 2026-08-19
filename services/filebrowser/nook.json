@@ -1,1 +1,9 @@
-{"name":"filebrowser","summary":"A file manager for the shared folder, in a browser","port":8180,"category":"files","library":"files"}
+{
+  "name": "filebrowser",
+  "summary": "A file manager for the shared folder, in a browser",
+  "port": 8180,
+  "category": "files",
+  "library": "files",
+  "repo": "https://github.com/filebrowser/filebrowser",
+  "stars": 35905
+}

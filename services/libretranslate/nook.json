@@ -1,1 +1,8 @@
-{"name":"libretranslate","summary":"Translation that does not send the text anywhere","port":5555,"category":"dev"}
+{
+  "name": "libretranslate",
+  "summary": "Translation that does not send the text anywhere",
+  "port": 5555,
+  "category": "dev",
+  "repo": "https://github.com/LibreTranslate/LibreTranslate",
+  "stars": 16034
+}

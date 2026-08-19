@@ -49,6 +49,18 @@ rm -rf "$old"
 
 after=$(names "$DEST")
 
+# Icons live beside each service in the catalogue, but the page is served from
+# www — so they are published there. Vendored rather than hot-linked, because a
+# tailnet with no route to the internet is exactly what nook is for.
+icons=$NOOK_DATA/www/icons
+mkdir -p "$icons"
+find "$icons" -name '*.svg' -delete 2>/dev/null || true
+for svg in "$DEST"/*/icon.svg; do
+  [[ -f $svg ]] || continue
+  cp "$svg" "$icons/$(basename "$(dirname "$svg")").svg"
+done
+chown -R "$NOOK_USER:$NOOK_USER" "$icons" 2>/dev/null || true
+
 mkdir -p "$(dirname "$STATE")"
 jq -nc \
   --arg at "$(date -Is)" \

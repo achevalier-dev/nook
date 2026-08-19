@@ -224,6 +224,13 @@ cmd_install() {
     stack_compose "$name" up -d
 
     port=$(service_field "$name" port "")
+    # Serving maps the ports that were running when `nook serve` last ran, so a
+    # service installed afterwards answers on plain http and the https link the
+    # index page shows for it is dead. Registered here, for exactly the reason
+    # nook-api does it on the box: whoever added it expects to be able to open it.
+    if [[ -n $port ]] && remote sudo tailscale serve status 2>/dev/null | grep -q "https://"; then
+      remote "sudo tailscale serve --bg --https=$port http://\$(tailscale ip -4 | head -n1):$port" >/dev/null 2>&1 || true
+    fi
     if [[ -n $port ]]; then
       notify "$name is up at http://$NOOK_HOST:$port"
     else
@@ -254,12 +261,17 @@ cmd_uninstall() {
   need docker
   [[ ${1:-} ]] || die "usage: nook uninstall <name>"
 
-  local name dir
+  local name dir port
   for name in "$@"; do
     dir=$(services_root)/$name
     [[ -d $dir ]] || die "no such service: $name"
     service_env
     stack_compose "$name" down
+    port=$(service_field "$name" port "")
+    # 443 is the index page, and nothing here takes that away.
+    if [[ -n $port && $port != 443 ]]; then
+      remote "sudo tailscale serve --https=$port off" >/dev/null 2>&1 || true
+    fi
     remote "rm -rf $(stack_dir "$name")"
     echo "$name is gone. Its data is still in $NOOK_DATA/apps/$name —"
     echo "  nook ssh sudo rm -rf $NOOK_DATA/apps/$name   removes that too."

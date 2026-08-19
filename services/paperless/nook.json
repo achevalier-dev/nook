@@ -1,1 +1,10 @@
-{"name": "paperless", "summary": "Scans and documents, indexed and searchable", "port": 8000, "docs": "https://docs.paperless-ngx.com", "library": "files/documents", "category": "documents"}
+{
+  "name": "paperless",
+  "summary": "Scans and documents, indexed and searchable",
+  "port": 8000,
+  "docs": "https://docs.paperless-ngx.com",
+  "library": "files/documents",
+  "category": "documents",
+  "repo": "https://github.com/paperless-ngx/paperless-ngx",
+  "stars": 44411
+}

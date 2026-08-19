@@ -1,1 +1,8 @@
-{"name":"it-tools","summary":"The little converters and generators, without the ad-funded sites","port":8095,"category":"dev"}
+{
+  "name": "it-tools",
+  "summary": "The little converters and generators, without the ad-funded sites",
+  "port": 8095,
+  "category": "dev",
+  "repo": "https://github.com/CorentinTh/it-tools",
+  "stars": 40288
+}

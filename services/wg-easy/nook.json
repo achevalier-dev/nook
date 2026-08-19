@@ -1,1 +1,8 @@
-{"name":"wg-easy","summary":"A WireGuard server with a page to add people to it","port":51821,"category":"network"}
+{
+  "name": "wg-easy",
+  "summary": "A WireGuard server with a page to add people to it",
+  "port": 51821,
+  "category": "network",
+  "repo": "https://github.com/wg-easy/wg-easy",
+  "stars": 26699
+}

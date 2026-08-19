@@ -1,1 +1,9 @@
-{"name":"radarr","summary":"Watches for films you asked for and files them","port":7878,"category":"downloads","library":"files/media"}
+{
+  "name": "radarr",
+  "summary": "Watches for films you asked for and files them",
+  "port": 7878,
+  "category": "downloads",
+  "library": "files/media",
+  "repo": "https://github.com/Radarr/Radarr",
+  "stars": 14184
+}

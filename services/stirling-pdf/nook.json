@@ -1,1 +1,9 @@
-{"name":"stirling-pdf","summary":"Split, merge, sign and un-rotate PDFs, locally","port":8092,"category":"documents","library":"files/documents"}
+{
+  "name": "stirling-pdf",
+  "summary": "Split, merge, sign and un-rotate PDFs, locally",
+  "port": 8092,
+  "category": "documents",
+  "library": "files/documents",
+  "repo": "https://github.com/Stirling-Tools/Stirling-PDF",
+  "stars": 89860
+}

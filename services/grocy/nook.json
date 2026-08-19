@@ -1,1 +1,8 @@
-{"name":"grocy","summary":"What is in the house, and when it goes off","port":9283,"category":"documents"}
+{
+  "name": "grocy",
+  "summary": "What is in the house, and when it goes off",
+  "port": 9283,
+  "category": "documents",
+  "repo": "https://github.com/grocy/grocy",
+  "stars": 9394
+}

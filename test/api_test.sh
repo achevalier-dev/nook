@@ -44,7 +44,16 @@ case "\$*" in
 esac
 exit 0
 STUB
-for stub in tailscale timedatectl ss; do
+cat >"$root/bin/tailscale" <<STUB
+#!/usr/bin/env bash
+printf 'tailscale %s\n' "\$*" >>"$root/tailscale.log"
+case "\$*" in
+  "ip -4") echo 100.64.0.1 ;;
+  "serve status") [[ -f $root/serving ]] && echo "https://box.tailnet.ts.net (tailnet only)" ;;
+esac
+exit 0
+STUB
+for stub in timedatectl ss; do
   printf '#!/usr/bin/env bash\nexit 0\n' >"$root/bin/$stub"
 done
 chmod +x "$root/bin"/*
@@ -112,6 +121,31 @@ check "remove did not take the stack down" "down" "$(cat "$root/docker.log")"
   { echo "api: the stack directory survived a remove" >&2; bad=1; }
 [[ -d $data/apps/jellyfin ]] ||
   { echo "api: remove deleted the service's data — it must not" >&2; bad=1; }
+
+# ── a service added from the page has to be reachable from the page ──────────
+# `nook serve` maps what was running when it ran. Something installed later is
+# on plain http only, and the https link the page shows for it is dead.
+rm -rf "$data/stacks/jellyfin" "$root/tailscale.log"
+touch "$root/serving"
+request "POST /services/jellyfin/install" >/dev/null
+check "an added service was not put behind the tailnet certificate" \
+  "serve --bg --https=8096 http://100.64.0.1:8096" "$(cat "$root/tailscale.log" 2>/dev/null)"
+
+: >"$root/tailscale.log"
+request "POST /services/jellyfin/remove" >/dev/null
+check "a removed service kept its https name" \
+  "serve --https=8096 off" "$(cat "$root/tailscale.log" 2>/dev/null)"
+
+# A box that is not serving over https has nothing to register, and running
+# `tailscale serve` on it would turn serving on by accident.
+rm -f "$root/serving"
+: >"$root/tailscale.log"
+request "POST /services/jellyfin/install" >/dev/null
+if grep -q "serve --bg" "$root/tailscale.log" 2>/dev/null; then
+  echo "api: it turned https serving on for a box that had it off" >&2
+  bad=1
+fi
+rm -rf "$data/stacks/jellyfin"
 
 # ── what the index page mounts it as ─────────────────────────────────────────
 grep -q 'proxy_pass http://${NOOK_TS_IP}:${NOOK_API_PORT}/' services/home/default.conf.template ||

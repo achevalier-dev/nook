@@ -1,1 +1,8 @@
-{"name":"searxng","summary":"Search, aggregated, without anyone building a profile","port":8084,"category":"dev"}
+{
+  "name": "searxng",
+  "summary": "Search, aggregated, without anyone building a profile",
+  "port": 8084,
+  "category": "dev",
+  "repo": "https://github.com/searxng/searxng",
+  "stars": 35735
+}

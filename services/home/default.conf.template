@@ -15,9 +15,26 @@ server {
   root /usr/share/nginx/html;
   index index.html;
 
-  # The vitals file is rewritten every 20 seconds; a cached copy is a page
-  # reporting a temperature from ten minutes ago.
+  # The page itself is regenerated every time a service is added or removed, so
+  # a browser holding yesterday's copy is showing a list that is wrong and
+  # running a script that is older than the box it is talking to. It is one
+  # small file on a tailnet — there is nothing to gain by caching it.
+  location = / {
+    add_header Cache-Control "no-store";
+  }
+
+  location = /index.html {
+    add_header Cache-Control "no-store";
+  }
+
+  # The vitals file is rewritten every 20 seconds and the catalogue whenever the
+  # box pulls a newer one; a cached copy of either is a page reporting something
+  # that stopped being true.
   location = /status.json {
+    add_header Cache-Control "no-store";
+  }
+
+  location = /catalogue.json {
     add_header Cache-Control "no-store";
   }
 

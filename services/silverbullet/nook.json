@@ -1,1 +1,8 @@
-{"name":"silverbullet","summary":"Markdown notes you can script from inside","port":3020,"category":"documents"}
+{
+  "name": "silverbullet",
+  "summary": "Markdown notes you can script from inside",
+  "port": 3020,
+  "category": "documents",
+  "repo": "https://github.com/silverbulletmd/silverbullet",
+  "stars": 5875
+}

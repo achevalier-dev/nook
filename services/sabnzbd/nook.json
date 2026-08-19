@@ -1,1 +1,9 @@
-{"name":"sabnzbd","summary":"Usenet downloads, unpacked and filed","port":8085,"category":"downloads","library":"files/downloads"}
+{
+  "name": "sabnzbd",
+  "summary": "Usenet downloads, unpacked and filed",
+  "port": 8085,
+  "category": "downloads",
+  "library": "files/downloads",
+  "repo": "https://github.com/sabnzbd/sabnzbd",
+  "stars": 3069
+}

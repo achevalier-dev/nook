@@ -1,1 +1,9 @@
-{"name": "vaultwarden", "summary": "Bitwarden-compatible password vault", "port": 8222, "docs": "https://github.com/dani-garcia/vaultwarden", "category": "tools"}
+{
+  "name": "vaultwarden",
+  "summary": "Bitwarden-compatible password vault",
+  "port": 8222,
+  "docs": "https://github.com/dani-garcia/vaultwarden",
+  "category": "tools",
+  "repo": "https://github.com/dani-garcia/vaultwarden",
+  "stars": 65654
+}

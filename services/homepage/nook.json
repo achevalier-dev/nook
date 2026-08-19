@@ -1,1 +1,8 @@
-{"name":"homepage","summary":"A start page you configure in YAML","port":3010,"category":"tools"}
+{
+  "name": "homepage",
+  "summary": "A start page you configure in YAML",
+  "port": 3010,
+  "category": "tools",
+  "repo": "https://github.com/gethomepage/homepage",
+  "stars": 32100
+}

@@ -1,1 +1,9 @@
-{"name":"qbittorrent","summary":"A torrent client with a web interface","port":8090,"category":"downloads","library":"files/downloads"}
+{
+  "name": "qbittorrent",
+  "summary": "A torrent client with a web interface",
+  "port": 8090,
+  "category": "downloads",
+  "library": "files/downloads",
+  "repo": "https://github.com/qbittorrent/qBittorrent",
+  "stars": 39570
+}

@@ -58,6 +58,15 @@ sync_catalogue() {
 
 sync_catalogue
 
+# Publish the icons that came with it, so the page has them before the daily
+# catalogue timer first fires.
+install -d -o "$NOOK_USER" -g "$NOOK_USER" "$NOOK_DATA/www/icons"
+for svg in "$NOOK_DATA/catalogue"/*/icon.svg; do
+  [[ -f $svg ]] || continue
+  install -m 644 -o "$NOOK_USER" -g "$NOOK_USER" \
+    "$svg" "$NOOK_DATA/www/icons/$(basename "$(dirname "$svg")").svg"
+done
+
 # Accept=yes means one instance of the service per connection, with the socket
 # on its stdin and stdout. A request that is a docker pull can take minutes, so
 # the instance is allowed to.

@@ -1,1 +1,8 @@
-{"name":"dashy","summary":"A third start page, because everyone wants a different one","port":4000,"category":"tools"}
+{
+  "name": "dashy",
+  "summary": "A third start page, because everyone wants a different one",
+  "port": 4000,
+  "category": "tools",
+  "repo": "https://github.com/Lissy93/dashy",
+  "stars": 26236
+}

@@ -1,1 +1,8 @@
-{"name":"linkding","summary":"Bookmarks that stay yours, with full-text search","port":9090,"category":"documents"}
+{
+  "name": "linkding",
+  "summary": "Bookmarks that stay yours, with full-text search",
+  "port": 9090,
+  "category": "documents",
+  "repo": "https://github.com/sissbruecker/linkding",
+  "stars": 11076
+}

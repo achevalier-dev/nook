@@ -1,1 +1,8 @@
-{"name":"gotify","summary":"The same idea, with an app and a longer memory","port":8070,"category":"network"}
+{
+  "name": "gotify",
+  "summary": "The same idea, with an app and a longer memory",
+  "port": 8070,
+  "category": "network",
+  "repo": "https://github.com/gotify/server",
+  "stars": 15754
+}

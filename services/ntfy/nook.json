@@ -1,1 +1,8 @@
-{"name":"ntfy","summary":"Push a notification to your phone from a shell script","port":8890,"category":"network"}
+{
+  "name": "ntfy",
+  "summary": "Push a notification to your phone from a shell script",
+  "port": 8890,
+  "category": "network",
+  "repo": "https://github.com/binwiederhier/ntfy",
+  "stars": 33617
+}

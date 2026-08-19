@@ -1,1 +1,8 @@
-{"name":"drawio","summary":"The other diagram editor, for when it has to be precise","port":8093,"category":"dev"}
+{
+  "name": "drawio",
+  "summary": "The other diagram editor, for when it has to be precise",
+  "port": 8093,
+  "category": "dev",
+  "repo": "https://github.com/jgraph/drawio",
+  "stars": 7601
+}

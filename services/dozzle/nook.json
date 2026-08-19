@@ -1,1 +1,8 @@
-{"name":"dozzle","summary":"Container logs in a browser, live, with nothing to configure","port":8888,"category":"monitoring"}
+{
+  "name": "dozzle",
+  "summary": "Container logs in a browser, live, with nothing to configure",
+  "port": 8888,
+  "category": "monitoring",
+  "repo": "https://github.com/amir20/dozzle",
+  "stars": 14131
+}

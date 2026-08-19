@@ -1,1 +1,9 @@
-{"name":"bazarr","summary":"Finds the subtitles the rest missed","port":6767,"category":"downloads","library":"files/media"}
+{
+  "name": "bazarr",
+  "summary": "Finds the subtitles the rest missed",
+  "port": 6767,
+  "category": "downloads",
+  "library": "files/media",
+  "repo": "https://github.com/morpheus65535/bazarr",
+  "stars": 4222
+}

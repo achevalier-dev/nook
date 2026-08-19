@@ -246,7 +246,16 @@
     box-shadow: 0 1px 0 #ffffffcc, inset 0 1px 2px #16181c1f;
   }
   .card.on .mono { color: var(--amber); background: #c8871a14; }
-  .card h3 { margin: 0; font-size: .88rem; font-weight: 700; letter-spacing: -.015em; align-self: center; }
+  .card h3 {
+    margin: 0; font-size: .88rem; font-weight: 700; letter-spacing: -.015em;
+    align-self: center; display: flex; align-items: baseline; gap: .4rem; flex-wrap: wrap;
+  }
+  .card h3 a.src { color: inherit; text-decoration: none; border-bottom: 1px solid transparent; }
+  .card h3 a.src:hover { color: var(--amber); border-color: var(--amber); }
+  .card .stars { font-weight: 400; font-size: .66rem; color: var(--faint); letter-spacing: 0; }
+  /* The icon sits in the same plate the initial would have, so a card with one
+     and a card without still line up. */
+  .mono.art { padding: .3rem; object-fit: contain; background: #16181c08; }
   .card p {
     margin: 0; color: var(--dim); font-size: .72rem; line-height: 1.4;
     /* Two lines for every card, so a row of them shares a baseline. */
@@ -732,9 +741,38 @@
 
   function card(s) {
     const c = el('div', 'card' + (s.installed ? ' on' : ''));
-    c.appendChild(el('span', 'mono', s.name[0].toUpperCase()));
-    const h = el('h3', '', s.name);
+    // An icon where there is one, the engraved initial where there is not.
+    if (s.icon) {
+      const img = document.createElement('img');
+      img.className = 'mono art';
+      img.src = `icons/${encodeURIComponent(s.name)}.svg`;
+      img.alt = '';
+      img.loading = 'lazy';
+      img.addEventListener('error', () => img.replaceWith(el('span', 'mono', s.name[0].toUpperCase())));
+      c.appendChild(img);
+    } else {
+      c.appendChild(el('span', 'mono', s.name[0].toUpperCase()));
+    }
+    const h = el('h3');
+    if (s.repo) {
+      const a = el('a', 'src', s.name);
+      a.href = s.repo;
+      a.target = '_blank';
+      a.rel = 'noreferrer';
+      a.title = s.repo.replace(/^https:\/\//, '');
+      h.appendChild(a);
+    } else {
+      h.append(s.name);
+    }
     if (fresh.has(s.name)) h.appendChild(el('span', 'fresh', 'new'));
+    // Stars are a rough proxy for "will this still exist next year", which is
+    // the only question worth asking of something you are about to run.
+    if (s.stars) {
+      const k = s.stars >= 1000 ? (s.stars / 1000).toFixed(s.stars >= 10000 ? 0 : 1) + 'k' : String(s.stars);
+      const st = el('span', 'stars', '★ ' + k);
+      st.title = s.stars.toLocaleString() + ' stars';
+      h.appendChild(st);
+    }
     c.appendChild(h);
     c.appendChild(el('p', '', s.summary || ''));
 

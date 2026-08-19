@@ -1,1 +1,8 @@
-{"name":"esphome","summary":"Build and flash firmware for small wifi devices","port":6052,"category":"home"}
+{
+  "name": "esphome",
+  "summary": "Build and flash firmware for small wifi devices",
+  "port": 6052,
+  "category": "home",
+  "repo": "https://github.com/esphome/esphome",
+  "stars": 11560
+}

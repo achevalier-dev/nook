@@ -1,1 +1,9 @@
-{"name":"code-server","summary":"VS Code in a browser, running on the box","port":8443,"category":"dev","library":"files"}
+{
+  "name": "code-server",
+  "summary": "VS Code in a browser, running on the box",
+  "port": 8443,
+  "category": "dev",
+  "library": "files",
+  "repo": "https://github.com/coder/code-server",
+  "stars": 78947
+}
