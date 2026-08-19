@@ -31,10 +31,15 @@ nook_dir() { echo "$NOOK_HOME/$1"; }
 
 nooks() {
   [[ -d $NOOK_HOME ]] || return 0
-  # Dot-directories are skipped: a nook is named after a host, and anything
-  # hidden in here belongs to something else.
-  find "$NOOK_HOME" -mindepth 2 -maxdepth 2 -name config -not -path '*/.*' -print 2>/dev/null |
-    sed 's|/config$||' | while read -r d; do basename "$d"; done | sort
+  # Hidden directories belong to something else and are skipped — but by their
+  # own name, never by the whole path: $NOOK_HOME is itself dotted, so matching
+  # a path against '*/.*' excludes every nook there is.
+  find "$NOOK_HOME" -mindepth 2 -maxdepth 2 -name config -print 2>/dev/null |
+    sed 's|/config$||' |
+    while read -r d; do
+      [[ ${d##*/} == .* ]] && continue
+      printf '%s\n' "${d##*/}"
+    done | sort
 }
 
 default_nook() {

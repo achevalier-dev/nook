@@ -27,6 +27,10 @@ command -v pacman >/dev/null && MGR=pacman
 [[ $MGR == none ]] && command -v apt >/dev/null && MGR=apt
 [[ $MGR == none ]] && command -v dnf >/dev/null && MGR=dnf
 
+# Bootstrap has already checked and installed all of this. Repeating it here
+# makes one install look like two, with the same notes printed twice.
+if [[ ${NOOK_FROM_BOOTSTRAP:-0} != 1 ]]; then
+
 missing=()
 #          command    arch name  debian/fedora name
 check() {
@@ -51,6 +55,7 @@ fi
 # these you need is not knowable until `nook adopt` has read its config.
 command -v iscsiadm >/dev/null || command -v nbd-client >/dev/null ||
   echo "note: 'nook attach' needs open-iscsi or nbd — 'nook doctor' names the one your nook uses" >&2
+fi
 
 mkdir -p "$BIN_DIR"
 ln -sf "$REPO/bin/nook" "$BIN_DIR/nook"

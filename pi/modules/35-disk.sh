@@ -26,8 +26,7 @@ fi
 # the card the box boots from, so without an external disk this half does not
 # run at all — the shared folder does, and the box is still worth adopting.
 if [[ ${NOOK_HAS_EXTERNAL:-0} != 1 ]]; then
-  warn "no external disk — skipping the network drive"
-  warn "plug one in and run this script again to add it"
+  note "skipped — the network drive needs an external disk"
   NOOK_TRANSPORT=none
   return 0
 fi

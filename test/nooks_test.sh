@@ -5,9 +5,13 @@
 set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
-NOOK_HOME=$(mktemp -d)
+# Dotted, like the real ~/.nook: a listing that filters on the whole path rather
+# than the directory name excludes everything here, and nothing else notices.
+SCRATCH=$(mktemp -d)
+NOOK_HOME="$SCRATCH/.nook"
+mkdir -p "$NOOK_HOME"
 export NOOK_HOME
-trap 'rm -rf "$NOOK_HOME"' EXIT
+trap 'rm -rf "$SCRATCH"' EXIT
 
 # shellcheck source=lib/common.sh
 source lib/common.sh
@@ -59,9 +63,13 @@ unset NOOK
 [[ $(NOOK=pi current_nook) == pi ]] || { echo "NOOK= no longer beats the default" >&2; exit 1; }
 
 # One block for every nook, rewritten as a set — never one block per box.
-HOME=$NOOK_HOME write_ssh_config
-config="$NOOK_HOME/.ssh/config"
-[[ $(grep -c '^Host ' "$config") == 2 ]] || { echo "ssh config does not carry both hosts" >&2; exit 1; }
+HOME=$SCRATCH write_ssh_config
+config="$SCRATCH/.ssh/config"
+[[ $(grep -c '^Host ' "$config") == 2 ]] || {
+  echo "ssh config does not carry both hosts — an empty block is what an empty" >&2
+  echo "listing writes, and it fails later as 'not answering'" >&2
+  exit 1
+}
 [[ $(grep -c '^# >>> nook$' "$config") == 1 ]] || { echo "more than one nook block" >&2; exit 1; }
 # The account on the box is rarely the local one, and ssh has to be told.
 grep -q '^	User admin$' "$config" || { echo "the box's ssh user did not reach the config" >&2; exit 1; }
@@ -70,7 +78,7 @@ grep -q '^	User admin$' "$config" || { echo "the box's ssh user did not reach th
 # Forgetting drops the entry and moves the default somewhere that still exists.
 systemctl() { :; }
 docker() { :; }
-HOME=$NOOK_HOME cmd_forget thinkcentre >/dev/null
+HOME=$SCRATCH cmd_forget thinkcentre >/dev/null
 [[ $(nooks | paste -sd,) == "pi" ]] || { echo "forget left the directory behind" >&2; exit 1; }
 [[ $(current_nook) == pi ]] || { echo "forget left the default pointing at nothing" >&2; exit 1; }
 [[ $(grep -c '^Host ' "$config") == 1 ]] || { echo "forget left a Host block behind" >&2; exit 1; }

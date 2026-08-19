@@ -17,6 +17,8 @@ NOOK_STATE=/var/lib/nook
 NOOK_CONF=/etc/nook.conf
 NOOK_REPO_RAW=${NOOK_REPO_RAW:-https://raw.githubusercontent.com/achevalier-dev/nook/main/pi}
 NOOK_BOOT_URL=${NOOK_BOOT_URL:-$NOOK_REPO_RAW/boot.sh}
+# The repository root, for pointing at the client installer at the end.
+NOOK_BOOT_URL_BASE=${NOOK_BOOT_URL_BASE:-${NOOK_REPO_RAW%/pi}}
 
 # IQN wants a date and a reversed domain you control; it is an identifier, not
 # a URL, so it never has to resolve.
@@ -258,12 +260,29 @@ NOOK_DISK_IMG=$NOOK_DATA/disk.img
 NOOK_TRANSPORT=${NOOK_TRANSPORT:-none}
 CONF
 
+# What you actually got, stated once. A run that ends in a list of what is on
+# and what is off reads as deliberate; one that ends in scattered warnings reads
+# as broken, even when it is the same box.
+row() { printf '    %-12s %s\n' "$1" "$2"; }
+
+printf '\n\033[1m  nook is up as "%s"\033[0m\n\n' "$NOOK_NAME"
+row reachable "${NOOK_TS_IP:-not on a tailnet} — ssh $NOOK_USER@$NOOK_NAME"
+row folder "$NOOK_DATA/files$([[ ${NOOK_HAS_EXTERNAL:-0} == 1 ]] || echo "  (on the system disk)")"
+
+case ${NOOK_TRANSPORT:-none} in
+  none) row drive "off — needs an external disk" ;;
+  *) row drive "$NOOK_TRANSPORT, $(numfmt --to=iec --format='%.0f' "$(stat -c %s "$NOOK_DATA/disk.img" 2>/dev/null || echo 0)")" ;;
+esac
+
+row containers "$(command -v docker >/dev/null && echo "docker ready" || echo "not installed")"
+[[ $NOOK_SHARES == 1 ]] && row samba "smb://$NOOK_NAME/files"
+
 cat <<NOTE
 
-  nook is up as "$NOOK_NAME".
+  On the machine you use, if you have not already:
 
-  From your laptop:
+      curl -fsSL $NOOK_BOOT_URL_BASE/bootstrap.sh | bash
 
-      nook adopt $NOOK_NAME
+  That installs the nook command and adopts this box on its own.
 
 NOTE

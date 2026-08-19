@@ -162,7 +162,7 @@ else
   run mkdir -p "$(dirname "$SRC")"
   run git clone --quiet "$REPO_URL" "$SRC"
 fi
-run bash "$SRC/install.sh"
+NOOK_FROM_BOOTSTRAP=1 run bash "$SRC/install.sh"
 
 # ------------------------------------------------------------------ next steps
 

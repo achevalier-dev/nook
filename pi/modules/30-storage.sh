@@ -12,9 +12,11 @@ disk=$(lsblk -dpno NAME,TRAN 2>/dev/null | awk '$2 == "usb" { print $1; exit }' 
 # the wrong place for one.
 NOOK_HAS_EXTERNAL=0
 
+# Not a warning: a box without an external disk is a perfectly good nook, it
+# just does not get the drive. Saying it once, plainly, beats four yellow lines
+# that make a working install look broken.
 if [[ -z ${disk:-} ]]; then
-  warn "no USB disk found — $NOOK_DATA will live on the system disk"
-  warn "the shared folder still works; the network drive needs an external disk"
+  note "no external disk — $NOOK_DATA is on the system disk"
 else
   NOOK_HAS_EXTERNAL=1
   part=$(lsblk -pnro NAME,TYPE "$disk" | awk '$2 == "part" { print $1; exit }' || true)
