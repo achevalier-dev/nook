@@ -312,6 +312,11 @@ cmd_serve() {
     if [[ $name == home ]]; then
       # The index answers on 443, because that is the address worth knowing.
       remote sudo tailscale serve --bg --https=443 "http://$NOOK_TS_IP:$port" >/dev/null
+      # And the page's own controls behind /api on the same origin — a page
+      # served over https cannot call a plain http port, and asking Tailscale to
+      # mount it is cheaper than teaching nginx to proxy.
+      remote sudo tailscale serve --bg --https=443 --set-path=/api \
+        "http://$NOOK_TS_IP:${NOOK_API_PORT:-8881}" >/dev/null 2>&1 || true
       echo "  https://$dns  →  home"
     else
       remote sudo tailscale serve --bg --https="$port" "http://$NOOK_TS_IP:$port" >/dev/null

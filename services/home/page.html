@@ -162,9 +162,18 @@
   .working { color: var(--amber); }
 
   footer { margin-top: 2.5rem; color: var(--faint); font-size: .72rem; display: flex; justify-content: space-between; gap: 1rem 1.5rem; flex-wrap: wrap; }
-  footer #link:empty { display: none; }
+  /* A button that reads as a line of the footer rather than a control bolted
+     onto it. */
+  button.link {
+    font: inherit; font-size: .72rem; letter-spacing: 0; text-transform: none;
+    color: var(--dim); background: none; border: 0; padding: 0; cursor: pointer;
+    border-bottom: 1px solid var(--rule);
+  }
+  button.link:hover { color: var(--amber); border-color: var(--amber); }
+  button.link:disabled { cursor: default; color: var(--faint); border-color: transparent; }
   footer a { color: var(--dim); text-decoration: none; border-bottom: 1px solid var(--rule); }
   footer a:hover { color: var(--amber); }
+  #measured:not(:empty)::after { content: " · "; color: var(--rule); }
   @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 </style>
 
@@ -202,7 +211,9 @@
 
   <footer>
     <span>kept by <a href="https://github.com/achevalier-dev/nook">nook</a></span>
-    <span id="link"></span><span id="stamp">reading…</span>
+    <span id="link"><span id="measured"></span>
+      <button id="measure" class="link">run speed test</button></span>
+    <span id="stamp">reading…</span>
   </footer>
 </main>
 
@@ -405,7 +416,8 @@
       set('down', s.down / top, s.down.toFixed(s.down < 100 ? 1 : 0));
       set('up', s.up / top, s.up.toFixed(s.up < 100 ? 1 : 0));
       const when = new Date(s.at);
-      $('link').textContent = `link measured ${when.toLocaleDateString()} · ${s.latency} ms`;
+      $('measured').textContent =
+        `${s.latency} ms · measured ${when.toLocaleDateString()}`;
     } catch { /* never measured, or the box is not answering */ }
   }
 
@@ -588,6 +600,27 @@
   }
 
   load();
+
+  // ── measure ────────────────────────────────────────────────────────────
+  // The box does the measuring; this only asks it to and waits. It takes the
+  // better part of a minute, so the button says so rather than looking hung.
+  const measure = $('measure');
+  measure?.addEventListener('click', async () => {
+    const was = measure.textContent;
+    measure.disabled = true;
+    measure.textContent = 'measuring…';
+    try {
+      const r = await fetch('api/speedtest', { method: 'POST' });
+      if (!r.ok) throw new Error(await r.text());
+      await readLink();
+      measure.textContent = 'measure again';
+    } catch {
+      measure.textContent = 'could not measure';
+      setTimeout(() => (measure.textContent = was), 3000);
+    } finally {
+      measure.disabled = false;
+    }
+  });
 
   // ── share ──────────────────────────────────────────────────────────────
   // The page into a PNG, in the browser, with no library and nothing fetched.

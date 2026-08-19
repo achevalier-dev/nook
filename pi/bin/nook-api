@@ -199,6 +199,20 @@ act() { # <name> <install|update|remove>
   fi
 }
 
+# Measuring the link is the one action here that changes nothing, so it skips
+# every catalogue check — but it still serialises, because two tabs measuring at
+# once would each report half the bandwidth.
+measure() {
+  command -v nook-speedtest >/dev/null ||
+    fail "503 Service Unavailable" "this box has no speed test — re-run the boot script"
+  serialize
+  if nook-speedtest --quiet >/dev/null 2>&1 && [[ -s $NOOK_DATA/www/speedtest.json ]]; then
+    respond "200 OK" "$(cat "$NOOK_DATA/www/speedtest.json")"
+  else
+    fail "500 Internal Server Error" "the measurement did not finish"
+  fi
+}
+
 # jq builds every answer here, so without it there is nothing to say but this.
 if ! command -v jq >/dev/null; then
   printf 'HTTP/1.1 503 Service Unavailable\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n'
@@ -219,6 +233,7 @@ target=${target%%\?*}
 
 case "$method $target" in
   "GET /health") respond "200 OK" '{"ok":true}' ;;
+  "POST /speedtest") measure ;;
   "GET /services" | "GET /services/") respond "200 OK" "$(catalogue_json)" ;;
   "POST /services/"*/install) act "$(basename "$(dirname "${target#/services/}")")" install ;;
   "POST /services/"*/update) act "$(basename "$(dirname "${target#/services/}")")" update ;;

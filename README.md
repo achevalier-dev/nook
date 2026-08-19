@@ -368,11 +368,18 @@ nook help --all        every command
 
 ## Measuring the link
 
+There is a **run speed test** button in the footer of the index page, and the
+same thing from a terminal:
+
 ```bash
 nook speedtest              # measure now, about half a minute
 nook speedtest --last       # what it measured last time
 nook speedtest --auto       # every six hours, on the box
 ```
+
+The button posts to `/api/speedtest`, which `nook serve` mounts on the same
+origin as the page — a page served over https cannot call a plain http port, and
+asking Tailscale to mount it is cheaper than teaching nginx to proxy.
 
 The measurement runs on the **box**, because what matters is what the nook can
 reach — a laptop on the same wifi would be measuring its own link. Two more
