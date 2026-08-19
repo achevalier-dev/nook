@@ -25,6 +25,16 @@ for arg in "$@"; do
   esac
 done
 
+# Piped from curl, stdin is the script itself, so a prompt has to read the
+# terminal directly or it silently eats the next line of the installer.
+ask() {
+  local answer
+  [[ $DRY == 0 && -r /dev/tty ]] || return 1
+  printf '\033[1m%s\033[0m [Y/n] ' "$*" >/dev/tty
+  read -r answer </dev/tty || return 1
+  [[ -z $answer || $answer == [Yy]* ]]
+}
+
 bold() { printf '\033[1m%s\033[0m\n' "$*"; }
 dim() { printf '\033[2m%s\033[0m\n' "$*"; }
 warn() { printf '\033[33m%s\033[0m\n' "$*" >&2; }
@@ -52,6 +62,14 @@ fi
 
 SUDO=""
 [[ $EUID -ne 0 ]] && command -v sudo >/dev/null && SUDO=sudo
+
+signed_in() {
+  tailscale status --json 2>/dev/null | grep -q '"BackendState": *"Running"'
+}
+
+tailnet_name() {
+  tailscale status --json 2>/dev/null | jq -r '.Self.DNSName // ""' | sed 's/\.$//'
+}
 
 bold "nook installer"
 dim "package manager: $MGR"
@@ -106,16 +124,24 @@ fi
 # nothing else here can do it for you.
 step "Tailscale"
 if command -v tailscale >/dev/null; then
-  if [[ $DRY == 0 ]] && ! command -v systemctl >/dev/null; then
+  if ! command -v systemctl >/dev/null; then
     warn "no systemd here — start tailscaled however this machine does it"
   elif [[ $DRY == 0 ]]; then
     systemctl is-active --quiet tailscaled 2>/dev/null || run $SUDO systemctl enable --now tailscaled
   fi
-  if [[ $DRY == 0 ]] && tailscale status --json 2>/dev/null | grep -q '"BackendState": *"Running"'; then
-    dim "signed in as $(tailscale status --json 2>/dev/null | jq -r '.Self.DNSName // ""' | sed 's/\.$//')"
+  if signed_in; then
+    dim "signed in as $(tailnet_name)"
   else
-    warn "this machine is not on a tailnet yet. Sign in with the same account as the box:"
-    warn "  sudo tailscale up"
+    echo
+    echo "  This machine is not on a tailnet yet, and that is how nook reaches a box."
+    echo "  Signing in opens a browser — use the same account as the box."
+    echo
+    if ask "  Sign in now?"; then
+      $SUDO tailscale up || warn "tailscale up did not finish — run it again when ready"
+      signed_in && dim "signed in as $(tailnet_name)"
+    else
+      warn "skipped — run this before 'nook adopt':  sudo tailscale up"
+    fi
   fi
 else
   warn "tailscale could not be installed — nook reaches boxes over it:"
@@ -151,6 +177,11 @@ esac
 echo
 bold "Done."
 echo
+if command -v tailscale >/dev/null && ! signed_in; then
+  warn "still not on a tailnet — nook adopt will not reach anything until:"
+  warn "  sudo tailscale up"
+  echo
+fi
 
 # The two one-liners look alike and do opposite things. Anyone who ran this one
 # on the box they meant to turn into a nook should hear about it here, not when
