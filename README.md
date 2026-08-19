@@ -12,12 +12,13 @@ A bar widget and menu rows for [Omarchy](https://omarchy.org) live in a separate
 repository, [omarchy-nook](https://github.com/achevalier-dev/omarchy-nook), and
 are entirely optional — everything here works from a terminal.
 
-![adopting a nook, mounting it, attaching the drive, and being refused](demo/nook.gif)
+![listing a nook, its status, mounting it, pushing a file, and a health check](demo/nook.gif)
 
-*Staged: there is no Raspberry Pi in that recording. `demo/fake-nook` replaces
-the SSH connection, the block device and the mount table, and nothing else — so
-every line on screen is printed by the same `cmd_` functions a real nook runs.
-`demo/record.sh` captures what they print and `demo/render.py` draws it.*
+*Recorded against a real Raspberry Pi — every number on screen came off the
+box. Tailnet addresses and the recorder's home directory are the only things
+edited, and only into placeholders. `demo/record.sh --real` captures it,
+`demo/render.py` draws it, and plain `demo/record.sh` does the same against
+`demo/fake-nook` for anyone without a box to point at.*
 
 ## How it fits together
 
