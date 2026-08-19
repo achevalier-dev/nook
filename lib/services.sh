@@ -132,7 +132,7 @@ service_base() {
 }
 
 write_home_page() {
-  local running name port summary rows="" base tmp
+  local running name port summary rows="" base tmp n=1
   base=$(service_base || true)
   running=$(running_services)
 
@@ -145,9 +145,14 @@ write_home_page() {
     port=$(service_port "$name")
     summary=$(service_field "$name" summary)
     [[ -n $port ]] || continue
-    rows+="<li><a href=\"$base:$port\"><span class=\"pip\"></span>"
-    rows+="<span class=\"name\">$name</span><span class=\"go\">→</span>"
-    rows+="<span class=\"what\">$summary</span></a></li>"
+    # data-name is what the page uses to grey a service out when the box says
+    # it has stopped, so the row is a reading rather than a decoration.
+    rows+="<li data-name=\"$name\"><a class=\"line\" href=\"$base:$port\">"
+    rows+="<span class=\"num\">$(printf '%02d' "$n")</span>"
+    rows+="<span class=\"nm\">$name</span><span class=\"dots\"></span>"
+    rows+="<span class=\"pt\">$port</span><span class=\"go\">↗</span></a>"
+    rows+="<p class=\"what\">$summary</p></li>"
+    n=$((n + 1))
   done
 
   [[ -n $rows ]] ||

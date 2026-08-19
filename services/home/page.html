@@ -3,165 +3,150 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{{HOST}}</title>
 <style>
-  /* Warm phosphor on near-black. A box in a cupboard should look like a box in
-     a cupboard — an instrument you glance at — not like a SaaS dashboard. */
+  /* Printed matter, not a dashboard. Set left, ranged on a baseline, with the
+     services listed the way a contents page lists chapters — dot leaders and a
+     figure — rather than as a grid of identical cards. */
   :root {
     --ink: #efe6d6;
     --dim: #8a8072;
-    --faint: #5c5449;
+    --faint: #57503f;
+    --rule: #2a2419;
     --glow: #f2b45c;
     --live: #86d08a;
     --bg: #100e0c;
-    --card: #191613;
-    --edge: #262119;
-    --shadow: 0 1px 0 #ffffff08 inset, 0 12px 30px -18px #000;
+    --paper: #ffffff05;
   }
   @media (prefers-color-scheme: light) {
     :root {
-      --ink: #1e1913; --dim: #6d6459; --faint: #9a9086; --glow: #b06f10;
-      --live: #2f7d3a; --bg: #f4f0e7; --card: #fffdf7; --edge: #e3dbca;
-      --shadow: 0 1px 0 #fff inset, 0 12px 30px -20px #0003;
+      --ink: #1c1712; --dim: #6b6255; --faint: #a49a8c; --rule: #ddd4c2;
+      --glow: #9c5f0b; --live: #2f7d3a; --bg: #f5f1e8; --paper: #00000004;
     }
   }
   * { box-sizing: border-box; }
-  html, body { height: 100%; }
   body {
-    margin: 0;
-    display: flex; align-items: center; justify-content: center;
-    padding: 3rem 1.5rem;
+    margin: 0; padding: clamp(2.5rem, 7vw, 5rem) 1.5rem 3rem;
     background: var(--bg);
-    /* A warm bloom above the machine's name, so the page has a light source. */
+    /* Graph paper, almost invisible. Gives the flat colour a surface. */
     background-image:
-      radial-gradient(60rem 34rem at 50% -14rem, #f2b45c1f, transparent 70%),
-      radial-gradient(40rem 24rem at 50% 120%, #ffffff08, transparent 70%);
+      radial-gradient(48rem 26rem at 18% -6rem, #f2b45c14, transparent 70%),
+      repeating-linear-gradient(0deg, var(--paper) 0 1px, transparent 1px 4px);
     color: var(--ink);
     font: 15px/1.6 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
     -webkit-font-smoothing: antialiased;
   }
-  /* Scanlines, barely there. Enough to read as a screen rather than a document. */
-  body::after {
-    content: ""; position: fixed; inset: 0; pointer-events: none;
-    background: repeating-linear-gradient(180deg, #fff0 0 2px, #0000000f 2px 3px);
-    opacity: .5;
-  }
-  main { width: 100%; max-width: 45rem; }
+  main { max-width: 44rem; margin: 0 auto; }
 
-  /* ── the machine ─────────────────────────────────────────────────────── */
-  .hero { text-align: center; margin-bottom: 3rem; }
+  /* ── masthead ────────────────────────────────────────────────────────── */
+  .top { display: flex; align-items: flex-start; justify-content: space-between; gap: 1.5rem; }
   h1 {
-    margin: 0; font-size: clamp(2.6rem, 9vw, 4rem); font-weight: 700;
-    letter-spacing: -.045em; line-height: 1;
-    text-shadow: 0 0 3.5rem #f2b45c40;
+    margin: 0; font-size: clamp(2.7rem, 8vw, 3.9rem); line-height: .95;
+    /* A serif over a monospace body: the one typographic surprise on the page. */
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    font-weight: 600; letter-spacing: -.025em;
   }
-  .status {
-    margin-top: 1rem; display: inline-flex; align-items: center; gap: .6rem;
-    padding: .4rem .9rem .4rem .75rem;
-    border: 1px solid var(--edge); border-radius: 2rem; background: var(--card);
-    font-size: .74rem; letter-spacing: .16em; text-transform: uppercase; color: var(--dim);
-  }
+  .meta { margin: .9rem 0 0; color: var(--dim); font-size: .78rem; letter-spacing: .04em; }
+  .meta b { font-weight: 400; color: var(--ink); }
+  .meta .sep { color: var(--faint); margin: 0 .5rem; }
   .lamp {
-    width: .45rem; height: .45rem; border-radius: 50%;
-    background: var(--live); box-shadow: 0 0 .6rem var(--live);
+    display: inline-block; width: .42rem; height: .42rem; border-radius: 50%;
+    background: var(--live); box-shadow: 0 0 .55rem var(--live);
+    margin-right: .45rem; vertical-align: .05em;
     animation: breathe 4.5s ease-in-out infinite;
   }
   .lamp.cold { background: var(--faint); box-shadow: none; animation: none; }
   @keyframes breathe { 0%, 100% { opacity: .3 } 50% { opacity: 1 } }
-  .tagline { color: var(--faint); margin: .9rem 0 0; font-size: .84rem; }
+
+  button {
+    font: inherit; font-size: .72rem; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--dim); background: none; border: 1px solid var(--rule);
+    padding: .5rem .85rem; border-radius: .3rem; cursor: pointer; white-space: nowrap;
+    transition: color .18s, border-color .18s;
+  }
+  button:hover { color: var(--glow); border-color: var(--glow); }
+  button:disabled { cursor: default; opacity: .6; }
+
+  hr { border: 0; border-top: 1px solid var(--rule); margin: 2rem 0; }
 
   /* ── vitals ──────────────────────────────────────────────────────────── */
-  .vitals {
-    display: grid; grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
-    gap: .8rem; margin-bottom: 2.75rem;
-  }
-  .dial {
-    background: var(--card); border: 1px solid var(--edge);
-    border-radius: .75rem; padding: 1rem 1.05rem 1.1rem; box-shadow: var(--shadow);
-  }
-  .k { color: var(--faint); font-size: .64rem; letter-spacing: .18em; text-transform: uppercase; }
-  .v {
-    font-size: 1.9rem; line-height: 1.15; margin-top: .3rem;
-    font-variant-numeric: tabular-nums; letter-spacing: -.03em;
-  }
-  .v small { font-size: .78rem; color: var(--dim); letter-spacing: 0; margin-left: .2rem; }
-  /* Ticks make it an instrument. A plain bar makes it a progress indicator,
-     which is a different and more anxious thing. */
-  .meter { position: relative; height: .38rem; margin-top: .8rem; background: #0007; border-radius: 1rem; overflow: hidden; }
-  .meter i {
-    position: absolute; inset: 0 100% 0 0; border-radius: 1rem;
-    background: linear-gradient(90deg, #f2b45c99, var(--glow));
-    box-shadow: 0 0 .7rem #f2b45c66;
-    transition: right 1.4s cubic-bezier(.2, .8, .2, 1);
-  }
-  .meter u { position: absolute; inset: 0; background-image: repeating-linear-gradient(90deg, #0000 0 calc(12.5% - 1px), var(--card) calc(12.5% - 1px) 12.5%); }
+  /* A strip of readings on one rule, like the top of an instrument, rather
+     than four boxes. */
+  .vitals { display: flex; flex-wrap: wrap; gap: 2.4rem 3rem; }
+  .k { color: var(--faint); font-size: .62rem; letter-spacing: .2em; text-transform: uppercase; }
+  .v { font-size: 1.75rem; line-height: 1.1; margin-top: .3rem; font-variant-numeric: tabular-nums; letter-spacing: -.03em; }
+  .v small { font-size: .7rem; color: var(--faint); letter-spacing: 0; margin-left: .15rem; }
+  .meter { position: relative; width: 6.5rem; height: 2px; margin-top: .75rem; background: var(--rule); }
+  .meter i { position: absolute; inset: 0 100% 0 0; background: var(--glow); box-shadow: 0 0 .5rem var(--glow); transition: right 1.4s cubic-bezier(.2, .8, .2, 1); }
 
-  /* ── services ────────────────────────────────────────────────────────── */
-  h2 { font-size: .64rem; letter-spacing: .2em; text-transform: uppercase; color: var(--faint); margin: 0 0 .85rem; font-weight: 500; }
-  ul { list-style: none; padding: 0; margin: 0; display: grid; gap: .6rem; }
-  li a {
-    display: grid; grid-template-columns: auto 1fr auto; align-items: center;
-    column-gap: .9rem; row-gap: .2rem;
-    padding: 1rem 1.15rem; background: var(--card);
-    border: 1px solid var(--edge); border-radius: .75rem;
-    color: inherit; text-decoration: none; box-shadow: var(--shadow);
-    transition: border-color .2s, transform .2s, box-shadow .2s;
-  }
-  li a:hover {
-    border-color: #f2b45c66; transform: translateY(-2px);
-    box-shadow: var(--shadow), 0 0 0 4px #f2b45c12;
-  }
-  li a:active { transform: translateY(0); }
-  /* Every child placed explicitly: one `grid-column` on its own turns
-     auto-flow off for the rest and the row comes out inside out. */
-  .pip { grid-area: 1 / 1 / 3 / 2; align-self: center; width: .4rem; height: .4rem; border-radius: 50%; background: var(--live); box-shadow: 0 0 .5rem var(--live); }
-  .name { grid-area: 1 / 2 / 2 / 3; font-weight: 700; letter-spacing: -.01em; }
-  .what { grid-area: 2 / 2 / 3 / 3; color: var(--faint); font-size: .8rem; }
-  .go { grid-area: 1 / 3 / 3 / 4; align-self: center; color: var(--faint); transition: color .2s, transform .2s; }
-  li a:hover .go { color: var(--glow); transform: translateX(3px); }
-  .empty { color: var(--dim); padding: 1.15rem; border: 1px dashed var(--edge); border-radius: .75rem; text-align: center; }
+  /* ── services, set as a contents page ───────────────────────────────── */
+  h2 { font-size: .62rem; letter-spacing: .22em; text-transform: uppercase; color: var(--faint); margin: 0 0 1.1rem; font-weight: 400; }
+  ol { list-style: none; padding: 0; margin: 0; counter-reset: n; }
+  ol li { counter-increment: n; padding: .55rem 0; border-bottom: 1px solid var(--rule); }
+  ol li:first-child { border-top: 1px solid var(--rule); }
+  .line { display: flex; align-items: baseline; gap: .55rem; text-decoration: none; color: inherit; }
+  .num { color: var(--faint); font-size: .72rem; min-width: 1.4rem; }
+  .nm { font-weight: 600; letter-spacing: -.01em; }
+  /* The leader is drawn, not typed, so it fills whatever room is left. */
+  .dots { flex: 1; align-self: center; height: 1px; margin: 0 .2rem;
+          background-image: radial-gradient(circle, var(--faint) .5px, transparent .6px);
+          background-size: 6px 1px; opacity: .8; }
+  .pt { color: var(--dim); font-variant-numeric: tabular-nums; font-size: .85rem; }
+  .go { color: var(--faint); transition: color .18s, transform .18s; }
+  .what { margin: .15rem 0 .1rem 1.95rem; color: var(--faint); font-size: .78rem; }
+  .line:hover .nm { color: var(--glow); }
+  .line:hover .go { color: var(--glow); transform: translate(2px, -2px); }
+  li.stopped { opacity: .45; }
+  li.stopped .line { pointer-events: none; }
+  li.stopped .pt::after { content: " stopped"; color: var(--faint); }
+  .empty { color: var(--dim); padding: 1rem 0; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }
   .empty code { color: var(--glow); }
 
-  footer {
-    margin-top: 2.75rem; padding-top: 1.1rem; border-top: 1px solid var(--edge);
-    color: var(--faint); font-size: .72rem;
-    display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
-  }
-  footer a { color: var(--dim); text-decoration: none; border-bottom: 1px solid var(--edge); }
+  footer { margin-top: 2.5rem; color: var(--faint); font-size: .72rem; display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+  footer a { color: var(--dim); text-decoration: none; border-bottom: 1px solid var(--rule); }
   footer a:hover { color: var(--glow); }
-  @media (prefers-reduced-motion: reduce) { *, body::after { animation: none !important; transition: none !important; } }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 </style>
 
-<main>
-  <div class="hero">
-    <h1>{{HOST}}</h1>
-    <div class="status"><span class="lamp cold" id="lamp"></span><span id="uptime">no answer</span></div>
-    <p class="tagline">a small computer, somewhere you left it</p>
+<main id="sheet">
+  <div class="top">
+    <div>
+      <h1>{{HOST}}</h1>
+      <p class="meta">
+        <span class="lamp cold" id="lamp"></span><span id="uptime">no answer</span>
+        <span class="sep">/</span><b id="model">a small computer, somewhere you left it</b>
+      </p>
+    </div>
+    <button id="share" title="Copy a picture of this page">share</button>
   </div>
+
+  <hr>
 
   <div class="vitals">
-    <div class="dial">
+    <div>
       <div class="k">temperature</div>
       <div class="v"><span id="temp">—</span><small>°C</small></div>
-      <div class="meter"><i id="tempbar"></i><u></u></div>
+      <div class="meter"><i id="tempbar"></i></div>
     </div>
-    <div class="dial">
+    <div>
       <div class="k">load</div>
       <div class="v" id="load">—</div>
-      <div class="meter"><i id="loadbar"></i><u></u></div>
+      <div class="meter"><i id="loadbar"></i></div>
     </div>
-    <div class="dial">
+    <div>
       <div class="k">disk free</div>
-      <div class="v"><span id="free">—</span></div>
-      <div class="meter"><i id="diskbar"></i><u></u></div>
+      <div class="v" id="free">—</div>
+      <div class="meter"><i id="diskbar"></i></div>
     </div>
-    <div class="dial">
+    <div>
       <div class="k">containers</div>
       <div class="v" id="containers">—</div>
-      <div class="meter"><i id="drivebar"></i><u></u></div>
+      <div class="meter"><i id="drivebar"></i></div>
     </div>
   </div>
 
+  <hr>
+
   <h2>services</h2>
-  <ul>{{ROWS}}</ul>
+  <ol id="list">{{ROWS}}</ol>
 
   <footer>
     <span>kept by <a href="https://github.com/achevalier-dev/nook">nook</a></span>
@@ -186,6 +171,7 @@
       const s = await (await fetch('status.json?t=' + Date.now(), { cache: 'no-store' })).json();
       $('lamp').classList.remove('cold');
       $('uptime').textContent = 'up ' + (s.uptime || '');
+      if (s.model) $('model').textContent = s.model;
       $('temp').textContent = s.temp ? s.temp.toFixed(1) : '—';
       // 30–85°C is the range one of these actually lives in; outside it is news.
       fill($('tempbar'), ((s.temp || 0) - 30) / 55);
@@ -195,6 +181,13 @@
       fill($('diskbar'), (s.disk?.used || 0) / (s.disk?.size || 1));
       $('containers').textContent = s.containers ?? '—';
       fill($('drivebar'), Math.min(1, (s.containers || 0) / 8));
+
+      // A green dot that is always green is decoration. This one is reporting.
+      if (Array.isArray(s.services)) {
+        for (const li of document.querySelectorAll('#list li[data-name]')) {
+          li.classList.toggle('stopped', !s.services.includes(li.dataset.name));
+        }
+      }
       $('stamp').textContent = 'read at ' + new Date().toLocaleTimeString();
     } catch {
       $('lamp').classList.add('cold');
@@ -206,4 +199,70 @@
   setInterval(read, 20000);
   // Coming back to a tab should not show a minute-old temperature.
   document.addEventListener('visibilitychange', () => !document.hidden && read());
+
+  // ── share ──────────────────────────────────────────────────────────────
+  // The page into a PNG, in the browser, with no library and nothing fetched.
+  // It works only because everything here is inline: an <img> or a web font
+  // inside a foreignObject would taint the canvas and toBlob would throw.
+  const btn = $('share');
+  const say = (t, ms = 2400) => { btn.textContent = t; setTimeout(() => (btn.textContent = 'share'), ms); };
+
+  btn.addEventListener('click', async () => {
+    btn.disabled = true;
+    try {
+      const sheet = $('sheet');
+      const pad = 40, scale = 2;
+      const w = sheet.offsetWidth + pad * 2, h = sheet.offsetHeight + pad * 2;
+
+      const clone = sheet.cloneNode(true);
+      clone.querySelector('#share')?.remove();
+      const css = [...document.styleSheets]
+        .flatMap(s => { try { return [...s.cssRules].map(r => r.cssText); } catch { return []; } })
+        .join('\n');
+
+      const body = document.createElement('div');
+      body.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
+      body.style.cssText = `padding:${pad}px;width:${w}px;font:15px/1.6 ui-monospace,Menlo,Consolas,monospace`;
+      body.innerHTML = `<style>${css}</style>`;
+      body.appendChild(clone);
+
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}">` +
+        `<foreignObject width="100%" height="100%">` +
+        new XMLSerializer().serializeToString(body) +
+        `</foreignObject></svg>`;
+
+      const img = new Image();
+      img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+      await img.decode();
+
+      const c = document.createElement('canvas');
+      c.width = w * scale; c.height = h * scale;
+      const ctx = c.getContext('2d');
+      // The SVG has no background of its own; without this the PNG is transparent
+      // and looks broken anywhere that composites it on white.
+      ctx.fillStyle = getComputedStyle(document.body).backgroundColor;
+      ctx.fillRect(0, 0, c.width, c.height);
+      ctx.scale(scale, scale);
+      ctx.drawImage(img, 0, 0);
+
+      const blob = await new Promise(r => c.toBlob(r, 'image/png'));
+      try {
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+        say('copied');
+      } catch {
+        // Clipboard images need a secure context and a permission; saving is
+        // the fallback that always works.
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `${document.title}.png`;
+        a.click();
+        URL.revokeObjectURL(a.href);
+        say('saved');
+      }
+    } catch {
+      say('could not', 3000);
+    } finally {
+      btn.disabled = false;
+    }
+  });
 </script>
