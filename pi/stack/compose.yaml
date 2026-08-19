@@ -1,0 +1,20 @@
+# An example for `nook up`: compose files live on your laptop, containers run on
+# the nook. Copy this somewhere, edit it, and run `nook up .` from that folder.
+#
+# Nothing binds to 0.0.0.0. Ports go to loopback and `tailscale serve` publishes
+# them on the tailnet with a real certificate:
+#
+#     nook ssh sudo tailscale serve --bg 5001
+
+services:
+  dockge:
+    image: louislam/dockge:1
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5001:5001"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /mnt/nook/docker/dockge:/app/data
+      - /mnt/nook/stacks:/mnt/nook/stacks
+    environment:
+      DOCKGE_STACKS_DIR: /mnt/nook/stacks

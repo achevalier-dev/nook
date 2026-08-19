@@ -1,0 +1,34 @@
+#!/bin/bash
+# nook-info — one JSON object describing this box.
+#
+# Read by `nook status` and by the bar widget, so it has to be cheap: no docker
+# pulls, no ykman-style multi-second calls, nothing that blocks on the network.
+
+set -uo pipefail
+
+# shellcheck disable=SC1091
+. /etc/nook.conf 2>/dev/null || true
+
+data=${NOOK_DATA:-/mnt/nook}
+transport=${NOOK_TRANSPORT:-none}
+port=$([[ $transport == iscsi ]] && echo 3260 || echo 10809)
+
+temp=$(awk '{ printf "%.1f", $1 / 1000 }' /sys/class/thermal/thermal_zone0/temp 2>/dev/null || echo null)
+read -r _ size used avail pct _ < <(df -B1 --output=source,size,used,avail,pcent "$data" 2>/dev/null | tail -n1)
+containers=$(docker ps -q 2>/dev/null | wc -l)
+attached=$(ss -Htn state established "sport = :$port" 2>/dev/null | wc -l)
+
+jq -nc \
+  --arg name "${NOOK_NAME:-nook}" \
+  --arg transport "$transport" \
+  --arg uptime "$(uptime -p 2>/dev/null | sed 's/^up //')" \
+  --argjson temp "${temp:-null}" \
+  --argjson size "${size:-0}" \
+  --argjson used "${used:-0}" \
+  --argjson avail "${avail:-0}" \
+  --argjson containers "${containers:-0}" \
+  --argjson attached "${attached:-0}" \
+  --argjson load "$(cut -d' ' -f1 /proc/loadavg)" \
+  '{name: $name, uptime: $uptime, temp: $temp, load: $load,
+    disk: {size: $size, used: $used, avail: $avail},
+    containers: $containers, transport: $transport, attached: $attached}'

@@ -1,0 +1,6 @@
+# The nook drive arrives over the network, so udisks files it under "system
+# disk" and the file manager hides it. UDISKS_SYSTEM=0 puts it back in the
+# sidebar with an eject button, which is the whole point of exporting a block
+# device instead of a folder.
+SUBSYSTEM=="block", ENV{ID_VENDOR}=="LIO-ORG", ENV{UDISKS_SYSTEM}="0"
+SUBSYSTEM=="block", KERNEL=="nbd*", ENV{UDISKS_SYSTEM}="0"

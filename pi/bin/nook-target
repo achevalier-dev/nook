@@ -1,0 +1,82 @@
+#!/bin/bash
+# nook-target — manage the exported disk from the nook side.
+#
+# `nook adopt` on your laptop calls this over SSH; you rarely run it by hand.
+
+set -euo pipefail
+
+# shellcheck disable=SC1091
+. /etc/nook.conf
+
+usage() {
+  cat <<'USAGE'
+nook-target allow IQN      let an initiator attach (iSCSI only; NBD has no ACLs)
+nook-target deny IQN       take that permission away
+nook-target info           transport, address, and who is attached
+nook-target resize SIZE    grow the disk image (e.g. 512G) — never shrinks
+USAGE
+}
+
+ts_ip() { tailscale ip -4 2>/dev/null | head -n1; }
+
+case ${1:-info} in
+allow)
+  [[ ${2:-} ]] || { usage >&2; exit 2; }
+  [[ $NOOK_TRANSPORT == iscsi ]] || { echo "NBD has no per-initiator ACLs — the tailnet is the boundary"; exit 0; }
+  targetcli "/iscsi/$NOOK_TARGET_IQN/tpg1/acls" ls 2>/dev/null | grep -qF "$2" ||
+    targetcli "/iscsi/$NOOK_TARGET_IQN/tpg1/acls" create "$2" >/dev/null
+  targetcli saveconfig >/dev/null
+  echo "$2 may attach"
+  ;;
+deny)
+  [[ ${2:-} ]] || { usage >&2; exit 2; }
+  [[ $NOOK_TRANSPORT == iscsi ]] || exit 0
+  targetcli "/iscsi/$NOOK_TARGET_IQN/tpg1/acls" delete "$2" >/dev/null
+  targetcli saveconfig >/dev/null
+  echo "$2 may no longer attach"
+  ;;
+info)
+  echo "transport   $NOOK_TRANSPORT"
+  echo "image       $NOOK_DISK_IMG ($(du -h --apparent-size "$NOOK_DISK_IMG" | cut -f1) allocated $(du -h "$NOOK_DISK_IMG" | cut -f1))"
+  if [[ $NOOK_TRANSPORT == iscsi ]]; then
+    echo "target      $NOOK_TARGET_IQN"
+    echo "portal      $(ts_ip):3260"
+    echo "allowed     $(targetcli "/iscsi/$NOOK_TARGET_IQN/tpg1/acls" ls 2>/dev/null | grep -o 'iqn\.[^ ]*' | paste -sd' ' || echo none)"
+  else
+    echo "export      nook"
+    echo "portal      $(ts_ip):10809"
+  fi
+  # Who is actually holding the disk right now. This is the number that matters:
+  # a second attacher is how the filesystem gets corrupted.
+  local_port=$([[ $NOOK_TRANSPORT == iscsi ]] && echo 3260 || echo 10809)
+  echo "attached    $(ss -Htn state established "sport = :$local_port" 2>/dev/null | awk '{print $4}' | cut -d: -f1 | sort -u | paste -sd' ' || echo none)"
+  ;;
+resize)
+  [[ ${2:-} ]] || { usage >&2; exit 2; }
+  port=$([[ $NOOK_TRANSPORT == iscsi ]] && echo 3260 || echo 10809)
+  # Resizing under a live attacher pulls the floor out from under a mounted
+  # filesystem. Detach first; there is no safe way to do this hot.
+  [[ -z $(ss -Htn state established "sport = :$port" 2>/dev/null) ]] ||
+    { echo "someone has the disk attached — run 'nook eject' there first" >&2; exit 1; }
+
+  current=$(stat -c %s "$NOOK_DISK_IMG")
+  truncate -s "$2" "$NOOK_DISK_IMG"
+  new=$(stat -c %s "$NOOK_DISK_IMG")
+  # Shrinking would cut the tail off a filesystem that still believes in it.
+  ((new >= current)) || { truncate -s "$current" "$NOOK_DISK_IMG"; echo "refusing to shrink the disk" >&2; exit 1; }
+
+  if [[ $NOOK_TRANSPORT == nbd ]]; then
+    systemctl restart nbd-server
+  else
+    # LIO reads the backing file size once, at creation, so the export has to be
+    # rebuilt for the new size to be visible to an initiator.
+    targetcli "/iscsi/$NOOK_TARGET_IQN/tpg1/luns" delete lun0 >/dev/null
+    targetcli /backstores/fileio delete nook >/dev/null
+    targetcli /backstores/fileio create name=nook file_or_dev="$NOOK_DISK_IMG" >/dev/null
+    targetcli "/iscsi/$NOOK_TARGET_IQN/tpg1/luns" create /backstores/fileio/nook >/dev/null
+    targetcli saveconfig >/dev/null
+  fi
+  echo "image is now $2 — grow the filesystem from the machine that attaches it"
+  ;;
+*) usage >&2; exit 2 ;;
+esac

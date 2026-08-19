@@ -1,0 +1,25 @@
+[Unit]
+# The shared folder, mounted over SSH. A user unit on purpose: FUSE mounts made
+# by root are invisible to your session, which is where the file manager lives.
+Description=nook shared folder at %h/nook
+Documentation=https://github.com/achevalier-dev/nook
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+EnvironmentFile=%h/.config/nook/config
+ExecStartPre=/usr/bin/mkdir -p %h/nook
+# -f keeps sshfs in the foreground so systemd tracks the real process; without
+# it the unit thinks the mount died the moment sshfs forks.
+# reconnect plus the keepalives are what survives a laptop lid: without them the
+# mount goes stale and every `ls` in it hangs until the next reboot.
+ExecStart=/usr/bin/sshfs -f \
+  -o reconnect,ServerAliveInterval=15,ServerAliveCountMax=3 \
+  -o idmap=user,default_permissions,follow_symlinks \
+  ${NOOK_HOST}:${NOOK_DATA}/files %h/nook
+ExecStop=-/usr/bin/fusermount3 -u %h/nook
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
