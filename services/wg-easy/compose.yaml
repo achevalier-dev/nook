@@ -1,0 +1,9 @@
+services:
+  wg-easy:
+    image: ghcr.io/wg-easy/wg-easy:latest
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:51821:51821"]
+    volumes:
+      - ${NOOK_DATA}/apps/wg-easy:/etc/wireguard
+    environment:
+      TZ: ${TZ:-UTC}

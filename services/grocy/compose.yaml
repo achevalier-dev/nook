@@ -1,0 +1,9 @@
+services:
+  grocy:
+    image: lscr.io/linuxserver/grocy:latest
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:9283:80"]
+    volumes:
+      - ${NOOK_DATA}/apps/grocy:/config
+    environment:
+      TZ: ${TZ:-UTC}

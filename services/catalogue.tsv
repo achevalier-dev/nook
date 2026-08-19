@@ -1,0 +1,53 @@
+# The curated list. One line per service; script/generate-services renders
+# services/<name>/{compose.yaml,nook.json} from it.
+#
+# Everything here is one container, runs on arm64 and x86, and needs nothing but
+# a data directory. Anything needing a database or a stack of its own is written
+# by hand instead and listed in KEEP at the top of the generator.
+#
+# name	category	port	cport	image	data	library	sock	command	summary
+kavita	media	5000	5000	jvmilazz0/kavita:latest	/kavita/config	books:/books	-	-	Comics, manga and ebooks, with a reader that remembers where you were
+komga	media	25600	25600	gotson/komga:latest	/config	comics:/comics	-	-	A comics and manga server that reads your folder structure
+calibre-web	media	8083	8083	lscr.io/linuxserver/calibre-web:latest	/config	books:/books	-	-	Browse and send your Calibre library to a reader
+photoprism	media	2342	2342	photoprism/photoprism:latest	/photoprism/storage	photos:/photoprism/originals	-	-	Photos, indexed and searchable, with faces and places
+metube	media	8081	8081	ghcr.io/alexta69/metube:latest	/downloads	-	-	-	Paste a video link and keep the file
+jellyseerr	media	5055	5055	fallenbagel/jellyseerr:latest	/app/config	-	-	-	Requests for a Jellyfin or Plex library, for the people who use it
+freshrss	media	8088	80	freshrss/freshrss:latest	/var/www/FreshRSS/data	-	-	-	Your feeds, read anywhere, without an account anywhere
+qbittorrent	downloads	8090	8080	lscr.io/linuxserver/qbittorrent:latest	/config	downloads:/downloads	-	-	A torrent client with a web interface
+transmission	downloads	9091	9091	lscr.io/linuxserver/transmission:latest	/config	downloads:/downloads	-	-	A lighter torrent client, if you want fewer knobs
+sabnzbd	downloads	8085	8080	lscr.io/linuxserver/sabnzbd:latest	/config	downloads:/downloads	-	-	Usenet downloads, unpacked and filed
+radarr	downloads	7878	7878	lscr.io/linuxserver/radarr:latest	/config	media:/media	-	-	Watches for films you asked for and files them
+sonarr	downloads	8989	8989	lscr.io/linuxserver/sonarr:latest	/config	media:/media	-	-	The same, for series
+lidarr	downloads	8686	8686	lscr.io/linuxserver/lidarr:latest	/config	music:/music	-	-	The same, for music
+readarr	downloads	8787	8787	lscr.io/linuxserver/readarr:latest	/config	books:/books	-	-	The same, for books
+prowlarr	downloads	9696	9696	lscr.io/linuxserver/prowlarr:latest	/config	-	-	-	One place to keep the indexers the others use
+bazarr	downloads	6767	6767	lscr.io/linuxserver/bazarr:latest	/config	media:/media	-	-	Finds the subtitles the rest missed
+stirling-pdf	documents	8092	8080	frooodle/s-pdf:latest	/configs	documents:/documents	-	-	Split, merge, sign and un-rotate PDFs, locally
+linkding	documents	9090	9090	sissbruecker/linkding:latest	/etc/linkding/data	-	-	-	Bookmarks that stay yours, with full-text search
+memos	documents	5230	5230	neosmemo/memos:stable	/var/opt/memos	-	-	-	A place for the notes too small for a document
+trilium	documents	8087	8080	zadam/trilium:latest	/home/node/trilium-data	-	-	-	A notebook that is a tree, for people who think in trees
+silverbullet	documents	3020	3000	ghcr.io/silverbulletmd/silverbullet:latest	/space	-	-	-	Markdown notes you can script from inside
+mealie	documents	9925	9000	ghcr.io/mealie-recipes/mealie:latest	/app/data	-	-	-	Recipes, scraped from a URL and kept without the life story
+grocy	documents	9283	80	lscr.io/linuxserver/grocy:latest	/config	-	-	-	What is in the house, and when it goes off
+node-red	home	1880	1880	nodered/node-red:latest	/data	-	-	-	Wire devices and services together by drawing it
+zigbee2mqtt	home	8099	8080	koenkk/zigbee2mqtt:latest	/app/data	-	-	-	Zigbee devices without their manufacturer's cloud
+esphome	home	6052	6052	ghcr.io/esphome/esphome:latest	/config	-	-	-	Build and flash firmware for small wifi devices
+wg-easy	network	51821	51821	ghcr.io/wg-easy/wg-easy:latest	/etc/wireguard	-	-	-	A WireGuard server with a page to add people to it
+ntfy	network	8890	80	binwiederhier/ntfy:latest	/var/cache/ntfy	-	-	serve	Push a notification to your phone from a shell script
+gotify	network	8070	80	gotify/server:latest	/app/data	-	-	-	The same idea, with an app and a longer memory
+dozzle	monitoring	8888	8080	amir20/dozzle:latest	-	-	yes	-	Container logs in a browser, live, with nothing to configure
+beszel	monitoring	8091	8090	henrygd/beszel:latest	/beszel_data	-	-	-	A light monitor for this box and any others you point at it
+filebrowser	files	8180	80	filebrowser/filebrowser:latest	/config	:/srv	-	-	A file manager for the shared folder, in a browser
+duplicati	files	8200	8200	lscr.io/linuxserver/duplicati:latest	/config	:/source	-	-	Encrypted backups of this box to anywhere else
+gitea	dev	3030	3000	gitea/gitea:latest	/data	-	-	-	Your own git host, small enough for a Pi
+forgejo	dev	3031	3000	codeberg.org/forgejo/forgejo:latest	/data	-	-	-	A community fork of Gitea, if you prefer it
+code-server	dev	8443	8443	lscr.io/linuxserver/code-server:latest	/config	:/workspace	-	-	VS Code in a browser, running on the box
+it-tools	dev	8095	80	corentinth/it-tools:latest	-	-	-	-	The little converters and generators, without the ad-funded sites
+searxng	dev	8084	8080	searxng/searxng:latest	/etc/searxng	-	-	-	Search, aggregated, without anyone building a profile
+excalidraw	dev	5020	80	excalidraw/excalidraw:latest	-	-	-	-	Hand-drawn-looking diagrams, entirely in the browser
+drawio	dev	8093	8080	jgraph/drawio:latest	-	-	-	-	The other diagram editor, for when it has to be precise
+libretranslate	dev	5555	5000	libretranslate/libretranslate:latest	/home/libretranslate/.local	-	-	-	Translation that does not send the text anywhere
+homepage	tools	3010	3000	ghcr.io/gethomepage/homepage:latest	/app/config	-	yes	-	A start page you configure in YAML
+homarr	tools	7575	7575	ghcr.io/ajnart/homarr:latest	/app/data/configs	-	yes	-	A start page you configure by dragging
+dashy	tools	4000	8080	lissy93/dashy:latest	/app/user-data	-	-	-	A third start page, because everyone wants a different one
+portainer	tools	9443	9000	portainer/portainer-ce:latest	/data	-	yes	-	Every container on the box, with buttons

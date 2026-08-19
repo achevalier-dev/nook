@@ -1,0 +1,10 @@
+services:
+  homarr:
+    image: ghcr.io/ajnart/homarr:latest
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:7575:7575"]
+    volumes:
+      - ${NOOK_DATA}/apps/homarr:/app/data/configs
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      TZ: ${TZ:-UTC}

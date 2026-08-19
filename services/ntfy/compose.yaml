@@ -1,0 +1,10 @@
+services:
+  ntfy:
+    image: binwiederhier/ntfy:latest
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:8890:80"]
+    volumes:
+      - ${NOOK_DATA}/apps/ntfy:/var/cache/ntfy
+    environment:
+      TZ: ${TZ:-UTC}
+    command: serve

@@ -1,0 +1,9 @@
+services:
+  jellyseerr:
+    image: fallenbagel/jellyseerr:latest
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:5055:5055"]
+    volumes:
+      - ${NOOK_DATA}/apps/jellyseerr:/app/config
+    environment:
+      TZ: ${TZ:-UTC}

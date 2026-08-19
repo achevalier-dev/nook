@@ -1,0 +1,10 @@
+services:
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:latest
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:8989:8989"]
+    volumes:
+      - ${NOOK_DATA}/apps/sonarr:/config
+      - ${NOOK_DATA}/files/media:/media
+    environment:
+      TZ: ${TZ:-UTC}

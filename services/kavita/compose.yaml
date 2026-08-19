@@ -1,0 +1,10 @@
+services:
+  kavita:
+    image: jvmilazz0/kavita:latest
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:5000:5000"]
+    volumes:
+      - ${NOOK_DATA}/apps/kavita:/kavita/config
+      - ${NOOK_DATA}/files/books:/books
+    environment:
+      TZ: ${TZ:-UTC}

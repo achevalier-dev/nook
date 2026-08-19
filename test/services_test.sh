@@ -61,5 +61,13 @@ for dir in services/*/; do
   done < <(sed -n 's/^[[:space:]]*-[[:space:]]*\([/$][^:]*\):.*/\1/p' "$dir/compose.yaml")
 done
 
+# A line added to the seed that nobody generated is a service that exists on
+# paper and nowhere else.
+while IFS=$'\t' read -r name _; do
+  [[ -z $name || $name == \#* ]] && continue
+  [[ -d services/$name ]] ||
+    { echo "services/catalogue.tsv lists $name but services/$name was never generated" >&2; bad=1; }
+done < services/catalogue.tsv
+
 [[ $bad == 0 ]] && echo "services: $(ls -d services/*/ | wc -l) catalogued, ports unique, nothing on 0.0.0.0"
 exit $bad

@@ -1,0 +1,10 @@
+services:
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:7878:7878"]
+    volumes:
+      - ${NOOK_DATA}/apps/radarr:/config
+      - ${NOOK_DATA}/files/media:/media
+    environment:
+      TZ: ${TZ:-UTC}

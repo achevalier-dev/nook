@@ -1,0 +1,9 @@
+services:
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:latest
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:9696:9696"]
+    volumes:
+      - ${NOOK_DATA}/apps/prowlarr:/config
+    environment:
+      TZ: ${TZ:-UTC}

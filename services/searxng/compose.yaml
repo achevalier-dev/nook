@@ -1,0 +1,9 @@
+services:
+  searxng:
+    image: searxng/searxng:latest
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:8084:8080"]
+    volumes:
+      - ${NOOK_DATA}/apps/searxng:/etc/searxng
+    environment:
+      TZ: ${TZ:-UTC}

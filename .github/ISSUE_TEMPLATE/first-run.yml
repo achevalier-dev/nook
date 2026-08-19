@@ -1,0 +1,67 @@
+name: First run report
+description: You tried the two install one-liners. Tell us how far you got.
+title: "first run: "
+labels: ["first-run"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This is the most useful thing an early tester can file, and it is worth
+        filing even when everything worked. A run that went fine on hardware
+        nobody here owns is a data point; a run that stalled is a bug with the
+        setup instructions.
+
+  - type: dropdown
+    id: outcome
+    attributes:
+      label: How far did you get?
+      options:
+        - Both one-liners finished and `nook status` printed
+        - The box script finished, my machine could not adopt it
+        - The box script did not finish
+        - It installed but something afterwards did not work
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: >
+        If it stalled, the last thing printed before it stopped is usually the
+        whole story. On a box running under Raspberry Pi Connect, boot.sh moves
+        itself into a systemd unit — the log is `journalctl -u nook-boot`.
+    validations:
+      required: true
+
+  - type: input
+    id: box
+    attributes:
+      label: The box
+      description: Model and OS — "Raspberry Pi 4, Pi OS Lite bookworm", "old ThinkCentre, Ubuntu 24.04".
+    validations:
+      required: true
+
+  - type: input
+    id: machine
+    attributes:
+      label: Your machine
+      description: Distribution and desktop, if any — "Arch, Hyprland", "Fedora 41, GNOME".
+    validations:
+      required: true
+
+  - type: input
+    id: disk
+    attributes:
+      label: External disk
+      description: What you plugged in, or "none".
+
+  - type: textarea
+    id: doctor
+    attributes:
+      label: nook doctor
+      description: >
+        Paste the output if you got far enough to run it. It names the box's
+        tailnet address and hostname — replace them if you would rather not
+        publish them, everything else in there is what we need.
+      render: text

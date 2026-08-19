@@ -1,0 +1,9 @@
+services:
+  dashy:
+    image: lissy93/dashy:latest
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:4000:8080"]
+    volumes:
+      - ${NOOK_DATA}/apps/dashy:/app/user-data
+    environment:
+      TZ: ${TZ:-UTC}

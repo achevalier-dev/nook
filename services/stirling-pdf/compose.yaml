@@ -1,0 +1,10 @@
+services:
+  stirling-pdf:
+    image: frooodle/s-pdf:latest
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:8092:8080"]
+    volumes:
+      - ${NOOK_DATA}/apps/stirling-pdf:/configs
+      - ${NOOK_DATA}/files/documents:/documents
+    environment:
+      TZ: ${TZ:-UTC}

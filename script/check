@@ -4,7 +4,8 @@ set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
-SCRIPTS=(bin/nook install.sh bootstrap.sh script/check demo/fake-nook demo/record.sh
+SCRIPTS=(bin/nook install.sh bootstrap.sh script/check script/generate-services
+  demo/fake-nook demo/record.sh
   pi/boot.sh pi/bin/nook-target pi/bin/nook-info pi/bin/nook-api pi/bin/nook-upgrade)
 while IFS= read -r f; do SCRIPTS+=("$f"); done < <(
   find lib pi/modules test -name '*.sh' -type f | sort
@@ -71,6 +72,22 @@ api() { ./test/api_test.sh; }
 update() { ./test/update_test.sh; }
 upgrade() { ./test/upgrade_test.sh; }
 
+# The index page is one inline script with no build step: nothing but this
+# notices a handler calling a function that does not exist, and the symptom is
+# a button that silently does nothing.
+page() {
+  python3 ./test/page_check.py services/home/page.html || return 1
+  if command -v node >/dev/null; then
+    local tmp
+    # node insists on the extension, and refuses a bare mktemp name.
+    tmp=$(mktemp --suffix=.js)
+    sed -n '/^<script>/,/^<\/script>/p' services/home/page.html | sed '1d;$d' >"$tmp"
+    node --check "$tmp" || { rm -f "$tmp"; echo "page: the index page's script does not parse" >&2; return 1; }
+    rm -f "$tmp"
+  fi
+  echo "page: the index page parses and calls nothing it does not define"
+}
+
 case ${1-} in
   --syntax-only) syntax ;;
   --lint-only) lint ;;
@@ -85,11 +102,12 @@ case ${1-} in
   --api) api ;;
   --update) update ;;
   --upgrade) upgrade ;;
-  "") syntax && lint && json && dispatch && blocks && drive && boot && multi && pipe && services && api && update && upgrade ;;
+  --page) page ;;
+  "") syntax && lint && json && dispatch && blocks && drive && boot && multi && pipe && services && api && update && upgrade && page ;;
   *)
     echo "usage: script/check [--syntax-only | --lint-only | --json | --dispatch |" >&2
     echo "                     --blocks | --drive | --boot | --multi | --pipe |" >&2
-    echo "                     --services | --api | --update | --upgrade]" >&2
+    echo "                     --services | --api | --update | --upgrade | --page]" >&2
     exit 2
     ;;
 esac

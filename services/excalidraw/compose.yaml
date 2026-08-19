@@ -1,0 +1,7 @@
+services:
+  excalidraw:
+    image: excalidraw/excalidraw:latest
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:5020:80"]
+    environment:
+      TZ: ${TZ:-UTC}

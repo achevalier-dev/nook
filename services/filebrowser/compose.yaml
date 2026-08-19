@@ -1,0 +1,10 @@
+services:
+  filebrowser:
+    image: filebrowser/filebrowser:latest
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:8180:80"]
+    volumes:
+      - ${NOOK_DATA}/apps/filebrowser:/config
+      - ${NOOK_DATA}/files:/srv
+    environment:
+      TZ: ${TZ:-UTC}

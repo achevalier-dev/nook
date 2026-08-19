@@ -1,0 +1,9 @@
+services:
+  memos:
+    image: neosmemo/memos:stable
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:5230:5230"]
+    volumes:
+      - ${NOOK_DATA}/apps/memos:/var/opt/memos
+    environment:
+      TZ: ${TZ:-UTC}

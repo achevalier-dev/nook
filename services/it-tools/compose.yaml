@@ -1,0 +1,7 @@
+services:
+  it-tools:
+    image: corentinth/it-tools:latest
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:8095:80"]
+    environment:
+      TZ: ${TZ:-UTC}

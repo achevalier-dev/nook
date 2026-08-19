@@ -1,0 +1,9 @@
+services:
+  esphome:
+    image: ghcr.io/esphome/esphome:latest
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:6052:6052"]
+    volumes:
+      - ${NOOK_DATA}/apps/esphome:/config
+    environment:
+      TZ: ${TZ:-UTC}

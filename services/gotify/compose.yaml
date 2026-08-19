@@ -1,0 +1,9 @@
+services:
+  gotify:
+    image: gotify/server:latest
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:8070:80"]
+    volumes:
+      - ${NOOK_DATA}/apps/gotify:/app/data
+    environment:
+      TZ: ${TZ:-UTC}

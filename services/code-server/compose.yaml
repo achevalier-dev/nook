@@ -1,0 +1,10 @@
+services:
+  code-server:
+    image: lscr.io/linuxserver/code-server:latest
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:8443:8443"]
+    volumes:
+      - ${NOOK_DATA}/apps/code-server:/config
+      - ${NOOK_DATA}/files:/workspace
+    environment:
+      TZ: ${TZ:-UTC}

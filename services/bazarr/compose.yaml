@@ -1,0 +1,10 @@
+services:
+  bazarr:
+    image: lscr.io/linuxserver/bazarr:latest
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:6767:6767"]
+    volumes:
+      - ${NOOK_DATA}/apps/bazarr:/config
+      - ${NOOK_DATA}/files/media:/media
+    environment:
+      TZ: ${TZ:-UTC}

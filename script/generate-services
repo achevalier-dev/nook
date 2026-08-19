@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+# Renders services/<name>/{compose.yaml,nook.json} from services/catalogue.tsv.
+#
+# Most self-hosted things are one container, one data directory and one port.
+# Writing fifty of those by hand means fifty chances to forget that ports bind
+# the tailnet address and data lives under $NOOK_DATA — so they are generated
+# from one line each, and test/services_test.sh checks the result.
+#
+# Anything needing a database or a stack of its own is hand-written and named
+# here, so a run of this never touches it.
+set -euo pipefail
+
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+
+KEEP=(home jellyfin audiobookshelf navidrome paperless vaultwarden
+  home-assistant n8n actual uptime-kuma dockge)
+
+kept() {
+  local k
+  for k in "${KEEP[@]}"; do [[ $k == "$1" ]] && return 0; done
+  return 1
+}
+
+made=0
+while IFS=$'\t' read -r name category port cport image data library sock command summary; do
+  [[ -z $name || $name == \#* ]] && continue
+  kept "$name" && { echo "skipping $name — hand-written" >&2; continue; }
+
+  dir=services/$name
+  mkdir -p "$dir"
+
+  {
+    printf 'services:\n  %s:\n    image: %s\n    restart: unless-stopped\n' "$name" "$image"
+    printf '    ports: ["${NOOK_TS_IP}:%s:%s"]\n' "$port" "$cport"
+
+    if [[ $data != - || $library != - || $sock == yes ]]; then
+      printf '    volumes:\n'
+      [[ $data != - ]] && printf '      - ${NOOK_DATA}/apps/%s:%s\n' "$name" "$data"
+      if [[ $library != - ]]; then
+        # "books:/books" is files/books; ":/srv" is the shared folder itself.
+        printf '      - ${NOOK_DATA}/files%s:%s\n' \
+          "$([[ ${library%%:*} ]] && echo "/${library%%:*}")" "${library#*:}"
+      fi
+      [[ $sock == yes ]] &&
+        printf '      - /var/run/docker.sock:/var/run/docker.sock:ro\n'
+    fi
+
+    printf '    environment:\n      TZ: ${TZ:-UTC}\n'
+    [[ $command != - ]] && printf '    command: %s\n' "$command"
+  } >"$dir/compose.yaml"
+
+  jq -nc --arg name "$name" --arg summary "$summary" --arg category "$category" \
+    --argjson port "$port" \
+    --arg library "$([[ $library != - ]] && printf 'files%s' "$([[ ${library%%:*} ]] && echo "/${library%%:*}")")" \
+    '{name: $name, summary: $summary, port: $port, category: $category}
+     + (if $library == "" then {} else {library: $library} end)' >"$dir/nook.json"
+
+  made=$((made + 1))
+done < services/catalogue.tsv
+
+echo "generated $made services"

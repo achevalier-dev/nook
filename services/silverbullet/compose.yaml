@@ -1,0 +1,9 @@
+services:
+  silverbullet:
+    image: ghcr.io/silverbulletmd/silverbullet:latest
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:3020:3000"]
+    volumes:
+      - ${NOOK_DATA}/apps/silverbullet:/space
+    environment:
+      TZ: ${TZ:-UTC}

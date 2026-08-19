@@ -1,0 +1,9 @@
+services:
+  trilium:
+    image: zadam/trilium:latest
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:8087:8080"]
+    volumes:
+      - ${NOOK_DATA}/apps/trilium:/home/node/trilium-data
+    environment:
+      TZ: ${TZ:-UTC}

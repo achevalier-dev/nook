@@ -1,0 +1,10 @@
+services:
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:8090:8080"]
+    volumes:
+      - ${NOOK_DATA}/apps/qbittorrent:/config
+      - ${NOOK_DATA}/files/downloads:/downloads
+    environment:
+      TZ: ${TZ:-UTC}

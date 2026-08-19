@@ -1,0 +1,9 @@
+services:
+  beszel:
+    image: henrygd/beszel:latest
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:8091:8090"]
+    volumes:
+      - ${NOOK_DATA}/apps/beszel:/beszel_data
+    environment:
+      TZ: ${TZ:-UTC}

@@ -1,0 +1,7 @@
+services:
+  drawio:
+    image: jgraph/drawio:latest
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:8093:8080"]
+    environment:
+      TZ: ${TZ:-UTC}

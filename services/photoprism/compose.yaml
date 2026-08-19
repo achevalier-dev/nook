@@ -1,0 +1,10 @@
+services:
+  photoprism:
+    image: photoprism/photoprism:latest
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:2342:2342"]
+    volumes:
+      - ${NOOK_DATA}/apps/photoprism:/photoprism/storage
+      - ${NOOK_DATA}/files/photos:/photoprism/originals
+    environment:
+      TZ: ${TZ:-UTC}

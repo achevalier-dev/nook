@@ -1,0 +1,10 @@
+services:
+  lidarr:
+    image: lscr.io/linuxserver/lidarr:latest
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:8686:8686"]
+    volumes:
+      - ${NOOK_DATA}/apps/lidarr:/config
+      - ${NOOK_DATA}/files/music:/music
+    environment:
+      TZ: ${TZ:-UTC}

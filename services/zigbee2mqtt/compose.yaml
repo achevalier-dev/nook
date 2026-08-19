@@ -1,0 +1,9 @@
+services:
+  zigbee2mqtt:
+    image: koenkk/zigbee2mqtt:latest
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:8099:8080"]
+    volumes:
+      - ${NOOK_DATA}/apps/zigbee2mqtt:/app/data
+    environment:
+      TZ: ${TZ:-UTC}

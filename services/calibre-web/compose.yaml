@@ -1,0 +1,10 @@
+services:
+  calibre-web:
+    image: lscr.io/linuxserver/calibre-web:latest
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:8083:8083"]
+    volumes:
+      - ${NOOK_DATA}/apps/calibre-web:/config
+      - ${NOOK_DATA}/files/books:/books
+    environment:
+      TZ: ${TZ:-UTC}

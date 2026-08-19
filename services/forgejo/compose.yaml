@@ -1,0 +1,9 @@
+services:
+  forgejo:
+    image: codeberg.org/forgejo/forgejo:latest
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:3031:3000"]
+    volumes:
+      - ${NOOK_DATA}/apps/forgejo:/data
+    environment:
+      TZ: ${TZ:-UTC}

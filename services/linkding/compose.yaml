@@ -1,0 +1,9 @@
+services:
+  linkding:
+    image: sissbruecker/linkding:latest
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:9090:9090"]
+    volumes:
+      - ${NOOK_DATA}/apps/linkding:/etc/linkding/data
+    environment:
+      TZ: ${TZ:-UTC}

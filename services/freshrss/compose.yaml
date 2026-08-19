@@ -1,0 +1,9 @@
+services:
+  freshrss:
+    image: freshrss/freshrss:latest
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:8088:80"]
+    volumes:
+      - ${NOOK_DATA}/apps/freshrss:/var/www/FreshRSS/data
+    environment:
+      TZ: ${TZ:-UTC}

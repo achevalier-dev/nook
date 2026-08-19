@@ -1,0 +1,9 @@
+services:
+  gitea:
+    image: gitea/gitea:latest
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:3030:3000"]
+    volumes:
+      - ${NOOK_DATA}/apps/gitea:/data
+    environment:
+      TZ: ${TZ:-UTC}

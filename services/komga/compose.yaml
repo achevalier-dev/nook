@@ -1,0 +1,10 @@
+services:
+  komga:
+    image: gotson/komga:latest
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:25600:25600"]
+    volumes:
+      - ${NOOK_DATA}/apps/komga:/config
+      - ${NOOK_DATA}/files/comics:/comics
+    environment:
+      TZ: ${TZ:-UTC}

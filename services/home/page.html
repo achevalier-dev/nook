@@ -596,7 +596,9 @@
     return n;
   };
 
-  async function call(name, action) {
+  // One name for it, because the cards below call it too — and a card whose
+  // Remove threw ReferenceError looked exactly like a button that does nothing.
+  async function act(name, action) {
     const r = await fetch(`api/services/${encodeURIComponent(name)}/${action}`, {
       method: 'POST', cache: 'no-store',
     });
@@ -662,12 +664,12 @@
 
     const ops = el('div', 'ops');
     if (s.installed) {
-      ops.appendChild(button(li, 'update', false, () => call(s.name, 'update')));
+      ops.appendChild(button(li, 'update', false, () => act(s.name, 'update')));
       // The index page is what you are looking at; taking it away from inside
       // itself is not something to offer behind a two-click confirm.
-      if (s.name !== 'home') ops.appendChild(button(li, 'remove', true, () => call(s.name, 'remove')));
+      if (s.name !== 'home') ops.appendChild(button(li, 'remove', true, () => act(s.name, 'remove')));
     } else {
-      ops.appendChild(button(li, 'add', false, () => call(s.name, 'install')));
+      ops.appendChild(button(li, 'add', false, () => act(s.name, 'install')));
     }
 
     li.appendChild(line);
@@ -788,11 +790,17 @@
   // or three is a shelf you can read.
   const GROUPS = [
     ['media', 'media'],
-    ['documents', 'documents & money'],
+    ['downloads', 'downloads'],
+    ['documents', 'documents & notes'],
     ['home', 'home & automation'],
-    ['tools', 'tools'],
+    ['network', 'network & alerts'],
+    ['monitoring', 'monitoring'],
+    ['files', 'files & backup'],
+    ['dev', 'tools & making things'],
+    ['tools', 'dashboards & the box itself'],
     ['other', 'other'],
   ];
+
 
   function renderMarket() {
     const needle = q.value.trim().toLowerCase();

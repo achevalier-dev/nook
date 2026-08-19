@@ -1,0 +1,10 @@
+services:
+  duplicati:
+    image: lscr.io/linuxserver/duplicati:latest
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:8200:8200"]
+    volumes:
+      - ${NOOK_DATA}/apps/duplicati:/config
+      - ${NOOK_DATA}/files:/source
+    environment:
+      TZ: ${TZ:-UTC}

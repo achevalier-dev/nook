@@ -1,0 +1,10 @@
+services:
+  readarr:
+    image: lscr.io/linuxserver/readarr:latest
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:8787:8787"]
+    volumes:
+      - ${NOOK_DATA}/apps/readarr:/config
+      - ${NOOK_DATA}/files/books:/books
+    environment:
+      TZ: ${TZ:-UTC}

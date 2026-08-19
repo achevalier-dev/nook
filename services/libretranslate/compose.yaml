@@ -1,0 +1,9 @@
+services:
+  libretranslate:
+    image: libretranslate/libretranslate:latest
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:5555:5000"]
+    volumes:
+      - ${NOOK_DATA}/apps/libretranslate:/home/libretranslate/.local
+    environment:
+      TZ: ${TZ:-UTC}

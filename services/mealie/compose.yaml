@@ -1,0 +1,9 @@
+services:
+  mealie:
+    image: ghcr.io/mealie-recipes/mealie:latest
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:9925:9000"]
+    volumes:
+      - ${NOOK_DATA}/apps/mealie:/app/data
+    environment:
+      TZ: ${TZ:-UTC}

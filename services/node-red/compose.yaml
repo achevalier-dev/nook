@@ -1,0 +1,9 @@
+services:
+  node-red:
+    image: nodered/node-red:latest
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:1880:1880"]
+    volumes:
+      - ${NOOK_DATA}/apps/node-red:/data
+    environment:
+      TZ: ${TZ:-UTC}

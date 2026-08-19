@@ -1,0 +1,10 @@
+services:
+  sabnzbd:
+    image: lscr.io/linuxserver/sabnzbd:latest
+    restart: unless-stopped
+    ports: ["${NOOK_TS_IP}:8085:8080"]
+    volumes:
+      - ${NOOK_DATA}/apps/sabnzbd:/config
+      - ${NOOK_DATA}/files/downloads:/downloads
+    environment:
+      TZ: ${TZ:-UTC}

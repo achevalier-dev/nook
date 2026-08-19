@@ -1,0 +1,43 @@
+name: Service request
+description: Something worth adding to the catalogue.
+title: "service: "
+labels: ["service"]
+body:
+  - type: input
+    id: name
+    attributes:
+      label: The service
+      description: Name and where its image lives.
+      placeholder: immich — ghcr.io/immich-app/immich-server
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: Why it belongs here
+      description: >
+        The catalogue is deliberately short. What makes this one of the things
+        people actually put on a box in a cupboard?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: arch
+    attributes:
+      label: Does it publish an arm64 image?
+      options:
+        - "Yes"
+        - "No — x86 boxes only"
+        - "Not sure"
+    validations:
+      required: true
+
+  - type: textarea
+    id: compose
+    attributes:
+      label: A compose file, if you have one running
+      description: >
+        Data under `/mnt/nook/apps/<name>`, ports bound to the tailnet address
+        rather than 0.0.0.0. A working one of these is most of the pull request.
+      render: yaml
