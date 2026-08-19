@@ -36,9 +36,19 @@ sync_catalogue() {
 
   install -d -o "$NOOK_USER" -g "$NOOK_USER" "$dest"
 
+  # Swapped, not merged: a service dropped upstream has to disappear here too,
+  # or the box keeps offering something the catalogue no longer vouches for.
+  swap_in() { # <directory holding the new catalogue>
+    rm -rf "$dest.new" "$dest.old"
+    cp -a "$1" "$dest.new"
+    chown -R "$NOOK_USER:$NOOK_USER" "$dest.new"
+    mv "$dest" "$dest.old" 2>/dev/null || true
+    mv "$dest.new" "$dest"
+    rm -rf "$dest.old"
+  }
+
   if [[ -d $src ]]; then
-    cp -a "$src/." "$dest/"
-    chown -R "$NOOK_USER:$NOOK_USER" "$dest"
+    swap_in "$src"
     note "catalogue from the checkout ($(find "$dest" -mindepth 1 -maxdepth 1 -type d | wc -l) services)"
     return 0
   fi
@@ -47,8 +57,7 @@ sync_catalogue() {
   if curl -fsSL "$NOOK_REPO_TARBALL" |
     tar -xz -C "$tmp" --strip-components=2 --wildcards '*/services/*' 2>/dev/null &&
     [[ -n $(find "$tmp" -mindepth 1 -maxdepth 1 -type d -print -quit) ]]; then
-    cp -a "$tmp/." "$dest/"
-    chown -R "$NOOK_USER:$NOOK_USER" "$dest"
+    swap_in "$tmp"
     note "catalogue fetched ($(find "$dest" -mindepth 1 -maxdepth 1 -type d | wc -l) services)"
   else
     warn "could not fetch the catalogue — the page can still update and remove"
