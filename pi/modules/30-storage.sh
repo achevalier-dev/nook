@@ -16,7 +16,7 @@ NOOK_HAS_EXTERNAL=0
 # just does not get the drive. Saying it once, plainly, beats four yellow lines
 # that make a working install look broken.
 if [[ -z ${disk:-} ]]; then
-  note "no external disk — $NOOK_DATA is on the system disk"
+  note "no external disk — $NOOK_DATA is on the system disk, which works but is smaller"
 else
   NOOK_HAS_EXTERNAL=1
   part=$(lsblk -pnro NAME,TYPE "$disk" | awk '$2 == "part" { print $1; exit }' || true)

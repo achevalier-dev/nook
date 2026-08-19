@@ -42,7 +42,7 @@ There are two install one-liners and they are easy to mix up, so:
 
 | Run it on | Script | What it does |
 |---|---|---|
-| **the box** | `pi/boot.sh` | turns that box *into* a nook — Tailscale, the external disk, Docker, the drive export |
+| **the box** | `pi/boot.sh` | turns that box *into* a nook — Tailscale, storage, Docker, the drive export |
 | **your machine** | `bootstrap.sh` | installs the `nook` command you drive it with |
 
 Both, in that order. If you run `bootstrap.sh` on a Raspberry Pi it tells you so.
@@ -69,8 +69,9 @@ steering.
 
 ### 1. On the box
 
-Raspberry Pi OS Lite, Debian, Ubuntu — anything apt-based, x86 or ARM. Plug in
-the external disk first.
+Raspberry Pi OS Lite, Debian, Ubuntu — anything apt-based, x86 or ARM. An
+external USB disk is worth plugging in first if you have one, but nothing here
+needs it.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/achevalier-dev/nook/main/pi/boot.sh | bash
@@ -89,9 +90,10 @@ Two flags worth knowing on the first run:
 
 - `--name` is the box's identity. It becomes the hostname, the Tailscale name,
   and what every `nook` command calls it. Give each box its own.
-- `--format` makes a filesystem on the external disk. **Without it nothing is
-  erased** — a disk nook does not recognise is left alone and skipped, which is
-  the right default when that disk might hold somebody's photos.
+- `--format` makes a filesystem on a blank external disk. **Without it nothing
+  is erased** — a disk nook does not recognise is left alone and skipped, which
+  is the right default when that disk might hold somebody's photos. Irrelevant
+  if you are not adding a disk.
 
 Re-running the whole thing later is the upgrade path; every step checks its own
 work first.
@@ -296,7 +298,7 @@ since every step checks its own work first.
 ```
 --name NAME       hostname, Tailscale name, and the nook's identity (default: nook)
 --data PATH       where the external disk is mounted (default: /mnt/nook)
---disk-size SIZE  size of the network drive image (default: 256G)
+--disk-size SIZE  largest the network drive may be (default: 256G, capped to fit)
 --format          make a filesystem on a blank external disk
 --shares          also run Samba, for phones and non-Linux machines
 --usb-gadget      also offer the drive over a USB-C cable
@@ -304,6 +306,12 @@ since every step checks its own work first.
 --detach          run in the background, surviving a dropped connection
 --no-detach       stay in the foreground even on a fragile session
 ```
+
+`--disk-size` is a ceiling, not a demand. The drive is a preallocated image, so
+it is sized to what is actually free: at most 80% of an external disk, or 50% of
+the system disk with 10GB held back for the OS, logs and container images. Below
+about 4GB of usable space it is skipped, and the box is still a perfectly good
+nook without one.
 
 Nothing is formatted without `--format`: an unpartitioned USB disk is far more
 likely to hold somebody's photos than to be blank. The external disk goes into
@@ -381,9 +389,11 @@ See [AGENTS.md](AGENTS.md) for the shell rules, and
 
 ## Requirements
 
-**The box** — Raspberry Pi OS Lite or any Debian, an external USB disk, and a
-Tailscale account. An x86 mini PC works the same way and will usually get the
-better transport, because its kernel has an iSCSI target and the Pi's does not.
+**The box** — Raspberry Pi OS Lite or any Debian, and a Tailscale account. An
+external USB disk is optional: without one the shared folder and the drive both
+live on the system disk, sized to leave it room. An x86 mini PC works the same
+way and will usually get the better transport, because its kernel has an iSCSI
+target and the Pi's does not.
 
 **Your machine** — Linux with `ssh`, `sshfs`, `jq`, `rsync` and `udisks2`, plus
 `open-iscsi` or `nbd` depending on which transport the Pi ended up with.

@@ -34,11 +34,11 @@ for f in pi/modules/*.sh pi/boot.sh; do
   }
 done
 
-# The drive is a preallocated image, and the one place it must never be created
-# is the disk the box boots from — that fills the card and takes the whole box
-# down, which is exactly what happened before this check existed.
-grep -q 'NOOK_HAS_EXTERNAL' pi/modules/35-disk.sh || {
-  echo "35-disk does not check for an external disk before creating the image" >&2
+# The drive is a preallocated image. It may live on the system disk — an
+# external one is better, not required — but it must always leave room behind,
+# because a full root filesystem takes the whole box down.
+grep -q 'reserve=' pi/modules/35-disk.sh && grep -q 'usable' pi/modules/35-disk.sh || {
+  echo "35-disk sizes the image without reserving free space — that fills the disk" >&2
   bad=1
 }
 grep -q 'NOOK_HAS_EXTERNAL' pi/modules/30-storage.sh || {

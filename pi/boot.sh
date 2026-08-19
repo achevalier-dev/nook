@@ -270,7 +270,7 @@ row reachable "${NOOK_TS_IP:-not on a tailnet} — ssh $NOOK_USER@$NOOK_NAME"
 row folder "$NOOK_DATA/files$([[ ${NOOK_HAS_EXTERNAL:-0} == 1 ]] || echo "  (on the system disk)")"
 
 case ${NOOK_TRANSPORT:-none} in
-  none) row drive "off — needs an external disk" ;;
+  none) row drive "off — not enough room for one on $NOOK_DATA" ;;
   *) row drive "$NOOK_TRANSPORT, $(numfmt --to=iec --format='%.0f' "$(stat -c %s "$NOOK_DATA/disk.img" 2>/dev/null || echo 0)")" ;;
 esac
 

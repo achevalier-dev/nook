@@ -22,30 +22,46 @@ if [[ -z ${NOOK_TS_IP:-} ]]; then
   return 0
 fi
 
-# The drive is one big preallocated file. On the system disk that means filling
-# the card the box boots from, so without an external disk this half does not
-# run at all — the shared folder does, and the box is still worth adopting.
-if [[ ${NOOK_HAS_EXTERNAL:-0} != 1 ]]; then
-  note "skipped — the network drive needs an external disk"
-  NOOK_TRANSPORT=none
-  return 0
-fi
-
+# An external disk is better — more room, no wear on the card the box boots
+# from — but it is not required. What is required is that the image fits with
+# room to spare, because fallocate reserves real blocks and a full root
+# filesystem takes the whole box down.
 if [[ ! -f $IMG ]]; then
-  # fallocate reserves real blocks. That is deliberate — a sparse image that
-  # runs out of room mid-write hands the machine that mounted it an I/O error
-  # on a live filesystem — but it means the size has to fit before we start.
   free_bytes=$(df -B1 --output=avail "$NOOK_DATA" | tail -n1 | tr -d ' ')
   want_bytes=$(numfmt --from=iec "${NOOK_DISK_SIZE%B}" 2>/dev/null || echo 0)
 
-  # Half the disk, so the shared folder is not squeezed out by a drive nobody
-  # has written to yet.
-  if ((want_bytes == 0 || want_bytes > free_bytes / 2)); then
-    NOOK_DISK_SIZE=$(numfmt --to=iec --format='%.0f' $((free_bytes / 2)))
-    note "sizing the drive at $NOOK_DISK_SIZE — half of what is free on $NOOK_DATA"
+  if [[ ${NOOK_HAS_EXTERNAL:-0} == 1 ]]; then
+    # A disk plugged in for this is allowed to be mostly this.
+    reserve=$((2 * 1024 ** 3))
+    share=80
+  else
+    # The system disk also holds the OS, the logs, and every container image
+    # 40-docker will pull. Leave it room to breathe.
+    reserve=$((10 * 1024 ** 3))
+    share=50
+  fi
+
+  usable=$((free_bytes * share / 100))
+  ((usable > free_bytes - reserve)) && usable=$((free_bytes - reserve))
+
+  # Below a few gigabytes it is not a drive worth having, and the box is still
+  # a perfectly good nook without one.
+  if ((usable < 4 * 1024 ** 3)); then
+    note "skipped — only $(numfmt --to=iec --format='%.0f' "$free_bytes") free on $NOOK_DATA"
+    note "plug in an external disk, or free some space, and run this again"
+    NOOK_TRANSPORT=none
+    return 0
+  fi
+
+  if ((want_bytes == 0 || want_bytes > usable)); then
+    NOOK_DISK_SIZE=$(numfmt --to=iec --format='%.0f' "$usable")
+    note "sizing the drive at $NOOK_DISK_SIZE to fit $NOOK_DATA"
   fi
 
   note "creating $IMG ($NOOK_DISK_SIZE)"
+  # fallocate reserves real blocks rather than making a sparse file. That is
+  # deliberate: a sparse image that runs out of room mid-write hands the machine
+  # that mounted it an I/O error on a live filesystem.
   if ! fallocate -l "$NOOK_DISK_SIZE" "$IMG" 2>/dev/null; then
     # Whatever it managed to reserve before giving up is still on the disk.
     rm -f "$IMG"
