@@ -52,6 +52,7 @@ blocks() { ./test/replace_block_test.sh; }
 drive() { ./test/drive_guard_test.sh; }
 boot() { ./test/boot_modules_test.sh; }
 multi() { ./test/nooks_test.sh; }
+pipe() { ./test/boot_pipe_test.sh; }
 
 case ${1-} in
   --syntax-only) syntax ;;
@@ -62,10 +63,11 @@ case ${1-} in
   --drive) drive ;;
   --boot) boot ;;
   --multi) multi ;;
-  "") syntax && lint && json && dispatch && blocks && drive && boot && multi ;;
+  --pipe) pipe ;;
+  "") syntax && lint && json && dispatch && blocks && drive && boot && multi && pipe ;;
   *)
     echo "usage: script/check [--syntax-only | --lint-only | --json | --dispatch |" >&2
-    echo "                     --blocks | --drive | --boot | --multi]" >&2
+    echo "                     --blocks | --drive | --boot | --multi | --pipe]" >&2
     exit 2
     ;;
 esac

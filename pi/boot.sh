@@ -16,6 +16,7 @@ NOOK_DATA=${NOOK_DATA:-/mnt/nook}
 NOOK_STATE=/var/lib/nook
 NOOK_CONF=/etc/nook.conf
 NOOK_REPO_RAW=${NOOK_REPO_RAW:-https://raw.githubusercontent.com/achevalier-dev/nook/main/pi}
+NOOK_BOOT_URL=${NOOK_BOOT_URL:-$NOOK_REPO_RAW/boot.sh}
 
 # IQN wants a date and a reversed domain you control; it is an identifier, not
 # a URL, so it never has to resolve.
@@ -28,6 +29,11 @@ NOOK_USB_GADGET=${NOOK_USB_GADGET:-0}
 SKIP=()
 
 MODULES=(10-base 20-tailscale 30-storage 35-disk 40-docker 50-shares 60-usb-gadget)
+
+# Kept whole, because the loop below consumes $@ and the sudo re-exec further
+# down still has to pass the flags on. Without this, `--format` is parsed here
+# and then quietly lost on the way to root.
+ORIGINAL_ARGS=("$@")
 
 usage() {
   cat <<'USAGE'
@@ -60,9 +66,30 @@ done
 
 # Re-exec under sudo rather than refusing, so the one-liner stays one line.
 # -E keeps the NOOK_* environment the user may have set in front of it.
+#
+# Piped from curl there is no script on disk to hand to sudo: bash read this
+# from stdin, so $0 and BASH_SOURCE both name the bash binary, and passing that
+# to `sudo bash` runs the interpreter as its own input — "cannot execute binary
+# file". So check that what we are pointed at is really this script, and fetch a
+# fresh copy on the other side of the privilege line when it is not.
+self_path() {
+  local src=${BASH_SOURCE[0]:-}
+  [[ -n $src && -f $src && -r $src ]] || return 1
+  grep -q "^NOOK_REPO_RAW=" "$src" 2>/dev/null || return 1
+  printf '%s\n' "$src"
+}
+
 if [[ $EUID -ne 0 ]]; then
   command -v sudo >/dev/null || { echo "run this as root, or install sudo" >&2; exit 1; }
-  exec sudo -E bash "$0" "$@"
+  if self=$(self_path); then
+    exec sudo -E bash "$self" ${ORIGINAL_ARGS[@]+"${ORIGINAL_ARGS[@]}"}
+  fi
+  command -v curl >/dev/null || { echo "curl is needed to re-run this under sudo" >&2; exit 1; }
+  # printf %q with no arguments still emits one empty word, which would reach
+  # the flag parser as an unknown option.
+  forwarded=""
+  ((${#ORIGINAL_ARGS[@]})) && forwarded=$(printf '%q ' "${ORIGINAL_ARGS[@]}")
+  exec sudo -E bash -c "curl -fsSL $(printf '%q' "$NOOK_BOOT_URL") | bash -s -- $forwarded"
 fi
 
 . /etc/os-release

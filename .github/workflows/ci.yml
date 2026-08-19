@@ -51,3 +51,6 @@ jobs:
 
       - name: two nooks stay apart
         run: ./script/check --multi
+
+      - name: the boot script survives curl | bash
+        run: ./script/check --pipe
