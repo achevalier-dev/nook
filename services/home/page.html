@@ -980,6 +980,14 @@
 
       const clone = sheet.cloneNode(true);
       clone.querySelector('#share')?.remove();
+      // The serialized clone is parsed as XML, where a double hyphen inside a
+      // comment is an error and the whole image fails to decode. The markup
+      // above is commented, and a flag like --no-manage is enough to break it,
+      // so the comments come out rather than being written around.
+      const walk = document.createTreeWalker(clone, NodeFilter.SHOW_COMMENT);
+      const notes = [];
+      while (walk.nextNode()) notes.push(walk.currentNode);
+      notes.forEach(n => n.remove());
       const css = [...document.styleSheets]
         .flatMap(s => { try { return [...s.cssRules].map(r => r.cssText); } catch { return []; } })
         .join('\n');
